@@ -12,7 +12,7 @@ export const theme = {
       secondaryLight: '#7D7AEA',
       
       // Neutrals
-      background: '#FFFFFF',
+      background: '##fffdf5',
       surface: '#F2F2F7',
       card: '#FFFFFF',
       
@@ -58,10 +58,10 @@ export const theme = {
     typography: {
       // Font families
       fontFamily: {
-        regular: 'System',
-        medium: 'System-Medium',
-        semibold: 'System-Semibold',
-        bold: 'System-Bold',
+        regular: 'Helvetica',
+        medium: 'Helvetica-Medium',
+        semibold: 'Helvetica-Semibold',
+        bold: 'Helvetica-Bold',
       },
       
       // Font sizes
