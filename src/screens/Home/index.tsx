@@ -7,8 +7,19 @@ import { Stack } from "expo-router";
 import { theme } from "@/src/theme";
 import { GlassView } from "expo-glass-effect";
 import { Image } from "expo-image";
-export default function HomeScreen() {
+import TopBar from "./components/topBar";
+import MiddleSection from "./components/middleSection";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";  // ✅
 
+export default function HomeScreen() {
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+      console.log(scrollY.value);
+    },
+  });
     const [refreshing,setRefreshing] = useState(false);
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -19,36 +30,28 @@ export default function HomeScreen() {
         setRefreshing(false);
     }, [])
 
-    // get todays date
-    const today = new Date();
-    const month = today.toLocaleDateString('en-US', { month: 'long' });
-    const dayOfMonth = today.getDate().toString().slice(0, 2);
- 
+    const {top} = useSafeAreaInsets();
     return (
         <>
           <Stack.Screen options={{title: "Home", headerShown: false}} />
-            <StatusBar style="dark" />
-              <SafeAreaView style={styles.container} edges={["top"]} >
-                <ScrollView
+            <StatusBar style="dark" />  
+              <View style={styles.container} >
+                <Animated.ScrollView
+                  scrollEventThrottle={16}
                   contentContainerStyle={{
                     flex: 1,
-                    backgroundColor: theme.colors.background,
+                    paddingTop: top,
                   }}
+                  onScroll={scrollHandler}
                   refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                   }
-                   
-                  
 
                 >
-                  <View style={styles.TopRowContainer}>
-                    <Text style={styles.TopRowTitle}>Hello!</Text>
-                    <Text style={styles.TopRowDate}>{month} {today.getDate()}</Text>
-                  </View>
-
-
-                </ScrollView>
-            </SafeAreaView>
+                  <TopBar scrollY={scrollY} />
+                  <MiddleSection scrollY={scrollY} />
+                </Animated.ScrollView>
+            </View>
             
         </>
     )
@@ -70,21 +73,6 @@ const styles = StyleSheet.create({
       width: '100%',
       height: '100%',
     },
-    TopRowContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: theme.spacing.md,
-    },
-    TopRowTitle: {
-      fontSize: theme.typography.fontSize['4xl'],
-      fontWeight: theme.typography.fontWeight.bold,
-      color: theme.colors.text,
-    },
-    TopRowDate: {
-      fontSize: theme.typography.fontSize['2xl'],
-      fontWeight: theme.typography.fontWeight.regular,
-      color: theme.colors.textSecondary,
-    },
+
  
 })  

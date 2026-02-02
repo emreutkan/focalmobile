@@ -35,6 +35,16 @@ export const theme = {
       // Overlays
       overlay: 'rgba(0, 0, 0, 0.5)',
       backdrop: 'rgba(0, 0, 0, 0.3)',
+
+   
+    },
+
+    card: {
+      dailySummary: "#4ecdc4",
+      proteinCard: "#ff9f1c",
+      carbCard: "#cbf3f0",
+      fatCard: "#ff6b6b",
+
     },
     
     spacing: {
@@ -115,6 +125,8 @@ export const theme = {
         elevation: 8,
       },
     },
+
+
     
     components: {
       button: {

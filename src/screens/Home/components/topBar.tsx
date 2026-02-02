@@ -1,18 +1,25 @@
 import { View, Text, StyleSheet } from "react-native";
 import { theme } from "@/src/theme";
+import Animated, { interpolate, SharedValue, useDerivedValue } from "react-native-reanimated";
 
-export default function TopBar() {
+export default function TopBar({ scrollY }: { scrollY: SharedValue<number> }) {
       // get todays date
       const today = new Date();
       const month = today.toLocaleDateString('en-US', { month: 'long' });
       const dayOfMonth = today.getDate().toString().slice(0, 2);
  
+  const titleOpacity = useDerivedValue(() => {
+    return interpolate(scrollY.value, [0, 50], [1, 0]);
+  });
+  const dateOpacity = useDerivedValue(() => {
+    return interpolate(scrollY.value, [0, 50], [1, 0]);
+  });
     return (
       <>
-        <View style={styles.container}>
-          <Text style={styles.title}>Hello!</Text>
-          <Text style={styles.date}>{month} {dayOfMonth}</Text>
-        </View>
+        <Animated.View style={styles.container}>
+          <Animated.Text style={[styles.title, { opacity: titleOpacity }]}>Hello!</Animated.Text>
+          <Animated.Text style={[styles.date, { opacity: dateOpacity }]}>{month} {dayOfMonth}</Animated.Text>
+        </Animated.View>
       </>
 
     )
