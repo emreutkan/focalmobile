@@ -5,6 +5,7 @@ import {
   Pressable,
 } from "react-native";
 import { theme } from "../../theme";
+import * as Haptics from "expo-haptics";
 import Animated, {
   SharedValue,
   useAnimatedStyle,
@@ -68,6 +69,8 @@ export default function CardComponent({
   const pressIn = () => {
     translate.value = withTiming(OFFSET, { duration: 90 });
     borderOpacity.value = withTiming(0, { duration: 60 });
+    // Haptic feedback on press
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const pressOut = () => {

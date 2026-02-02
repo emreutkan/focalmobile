@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, Dimensions } from "react-native";
+import { View, Text, Dimensions, StyleSheet } from "react-native";
 import { theme } from "../../theme";
 import Animated, {
   interpolate,
@@ -17,9 +17,10 @@ const OFFSET = 4;
 interface Props {
   scrollY: SharedValue<number>;
   sectionY: SharedValue<number>;
+  calories?: number;
 }
 
-export default function DailySummaryCard({ scrollY, sectionY }: Props) {
+export default function DailySummaryCard({ scrollY, sectionY, calories = 0 }: Props) {
   // Calculate animated height value
   const animatedHeight = useDerivedValue(() => {
     const relativeScroll = Math.max(0, scrollY.value - sectionY.value);
@@ -76,8 +77,59 @@ export default function DailySummaryCard({ scrollY, sectionY }: Props) {
       containerAnimatedStyle={containerAnimatedStyle}
       borderAnimatedStyle={borderAnimatedStyle}
       shadowAnimatedStyle={shadowAnimatedStyle}
+      padding={theme.spacing.md}
     >
-      <Text>Daily Summary Card</Text>
+      <View style={styles.container}>
+        <Text style={styles.label}>CALORIES</Text>
+        <View style={styles.valueContainer}>
+          <Text style={styles.value}>{Math.round(calories)}</Text>
+          <Text style={styles.unit}>kcal</Text>
+        </View>
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: '0%' }]} />
+        </View>
+      </View>
     </CardComponent>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  label: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  valueContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+  },
+  value: {
+    fontSize: theme.typography.fontSize["3xl"],
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+  },
+  unit: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    marginLeft: 4,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: theme.colors.text,
+    borderRadius: 4,
+  },
+});
