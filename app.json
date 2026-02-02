@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.emreutkan.focal",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +23,8 @@
         "monochromeImage": ""
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.emreutkan.focal"
     },
     "web": {
       "output": "static",
@@ -40,25 +45,31 @@
         }
       ],
       [
-      "expo-sqlite",
-      {
-        "enableFTS": true,
-        "useSQLCipher": true,
-        "android": {
+        "expo-sqlite",
+        {
           "enableFTS": true,
-          "useSQLCipher": true
-        },
-        "ios": {
-          "customBuildFlags": [
-            "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1",
-          ]
+          "useSQLCipher": true,
+          "android": {
+            "enableFTS": true,
+            "useSQLCipher": true
+          },
+          "ios": {
+            "customBuildFlags": [
+              "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"
+            ]
+          }
         }
-      }
-    ]
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2bf384a2-10dd-4fc6-811d-b12340e16fe5"
+      }
     }
   }
 }

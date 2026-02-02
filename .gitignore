@@ -42,3 +42,7 @@ app-example
 /ios
 /android
 api's.md
+
+.cursor/
+.claude/
+.vscode/
