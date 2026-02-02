@@ -14,6 +14,7 @@ import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native
 import CardComponent from "@/src/components/Cards/cardComponent";
 import { Dimensions } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function HomeScreen() {
 
     const {top, bottom} = useSafeAreaInsets();
     const { width } = Dimensions.get("window");
-    const FLOATING_CARD_WIDTH = width - theme.spacing.md * 2;
+    const FLOATING_CARD_WIDTH = Math.min(400, width - theme.spacing.xl * 2);
     
     const handleScanFood = useCallback(async () => {
       try {
@@ -67,7 +68,7 @@ export default function HomeScreen() {
                   mediaTypes: ['images'],
                   allowsEditing: true,
                   aspect: [4, 3],
-                  quality: 1,
+                  quality: 0.3,
                 });
 
                 if (!result.canceled && result.assets[0]) {
@@ -84,7 +85,7 @@ export default function HomeScreen() {
                   mediaTypes: ['images'],
                   allowsEditing: true,
                   aspect: [4, 3],
-                  quality: 1,
+                  quality: 0.3,
                 });
 
                 if (!result.canceled && result.assets[0]) {
@@ -143,14 +144,18 @@ export default function HomeScreen() {
                   <MiddleSection scrollY={scrollY} />
                 </Animated.ScrollView>
                 
-                <View style={[styles.floatingCardContainer, { bottom: bottom + theme.spacing.md }]}>
+                <View style={[styles.floatingButtonContainer, { bottom: bottom + theme.spacing.xl }]}>
                   <CardComponent
-                    height={60}
+                    height={64}
                     width={FLOATING_CARD_WIDTH}
-                    backgroundColor={theme.card.dailySummary}
+                    backgroundColor="#FFE66D"
                     onPress={handleScanFood}
+                    showShadow={true}
                   >
-                    <Text style={styles.scanText}>[ ] scan food</Text>
+                    <View style={styles.scanButtonContent}>
+                      <Ionicons name="scan" size={32} color={theme.colors.text} />
+                      <Text style={styles.scanButtonText}>SCAN FOOD</Text>
+                    </View>
                   </CardComponent>
                 </View>
 
@@ -209,17 +214,25 @@ const styles = StyleSheet.create({
       width: '100%',
       height: '100%',
     },
-    floatingCardContainer: {
+    floatingButtonContainer: {
       position: 'absolute',
-      left: theme.spacing.md,
-      right: theme.spacing.md,
+      left: 0,
+      right: 0,
       alignItems: 'center',
+      zIndex: 40,
     },
-    scanText: {
-      fontSize: theme.typography.fontSize.lg,
-      fontWeight: theme.typography.fontWeight.semibold,
+    scanButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.md,
+    },
+    scanButtonText: {
+      fontSize: theme.typography.fontSize.xl,
+      fontWeight: theme.typography.fontWeight.bold,
       color: theme.colors.text,
-      textAlign: 'center',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
     },
     modalContainer: {
       flex: 1,

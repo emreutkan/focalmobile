@@ -17,7 +17,9 @@ export default function TopBar({ scrollY }: { scrollY: SharedValue<number> }) {
     return (
       <>
         <Animated.View style={styles.container}>
-          <Animated.Text style={[styles.title, { opacity: titleOpacity }]}>Hello!</Animated.Text>
+          <Animated.Text style={[styles.title, { opacity: titleOpacity }]}>
+            focal<Text style={styles.dot}>.</Text>
+          </Animated.Text>
           <Animated.Text style={[styles.date, { opacity: dateOpacity }]}>{month} {dayOfMonth}</Animated.Text>
         </Animated.View>
       </>
@@ -37,6 +39,9 @@ export default function TopBar({ scrollY }: { scrollY: SharedValue<number> }) {
     fontSize: theme.typography.fontSize['4xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
+  },
+  dot: {
+    color: theme.card.dailySummary,
   },
   date: {
     fontSize: theme.typography.fontSize['2xl'],

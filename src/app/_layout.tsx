@@ -11,6 +11,8 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="imageAnalyzer" options={{ headerShown: false }} />
+        <Stack.Screen name="foodReview" options={{ headerShown: false }} />
+        <Stack.Screen name="nutritionResults" options={{ headerShown: false }} />
       </Stack>
     </SafeAreaProvider>
   );
