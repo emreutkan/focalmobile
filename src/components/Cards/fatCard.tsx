@@ -10,15 +10,17 @@ const SMALL_CARD_WIDTH = (CARD_WIDTH - theme.spacing.sm * 2) / 3;
 
 interface FatCardProps {
   value?: number;
+  onPress?: () => void;
 }
 
-export default function FatCard({ value = 0 }: FatCardProps) {
+export default function FatCard({ value = 0, onPress }: FatCardProps) {
   return (
     <CardComponent
       height={SMALL_CARD_HEIGHT}
       width={SMALL_CARD_WIDTH}
       backgroundColor={theme.card.fatCard}
       padding={theme.spacing.sm}
+      onPress={onPress}
     >
       <View style={styles.container}>
         <Text style={styles.label}>FAT</Text>

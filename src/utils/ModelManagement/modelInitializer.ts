@@ -5,8 +5,30 @@ import { downloadModel } from "./modelDownloader";
 
 let llamaContext: LlamaContext | null = null;
 let multimodalInitialized = false;
+let initializationPromise: Promise<LlamaContext> | null = null;
 
 export const initializeModel = async (model: typeof Models.main, onProgress?: (message: string, progress: number) => void) => {
+  // Return existing context if fully initialized
+  if (llamaContext && multimodalInitialized) {
+    return llamaContext;
+  }
+
+  // If initialization is already in progress, wait for it
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  // Start initialization and store the promise
+  initializationPromise = doInitializeModel(model, onProgress);
+
+  try {
+    return await initializationPromise;
+  } finally {
+    initializationPromise = null;
+  }
+};
+
+const doInitializeModel = async (model: typeof Models.main, onProgress?: (message: string, progress: number) => void) => {
   try {
     if (llamaContext && multimodalInitialized) {
       return llamaContext;
@@ -76,6 +98,9 @@ export const initializeModel = async (model: typeof Models.main, onProgress?: (m
     return llamaContext;
   } catch (error: any) {
     console.error('Error initializing model:', error);
+    // Reset state on failure so next attempt starts fresh
+    llamaContext = null;
+    multimodalInitialized = false;
     throw error;
   }
 };

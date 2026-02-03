@@ -1,92 +1,170 @@
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-  withSequence,
-  interpolate,
-} from "react-native-reanimated";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, StyleSheet, Animated, Easing, TouchableOpacity } from "react-native";
 import { theme } from "../theme";
 
 interface LoadingScreenProps {
-  message: string;
+  message?: string;
+  showTimer?: boolean;
+  onGoPro?: () => void;
 }
 
-export default function LoadingScreen({ message }: LoadingScreenProps) {
-  const pingScale = useSharedValue(1);
-  const bounceY = useSharedValue(0);
-  const rotate = useSharedValue(0);
+const FUNNY_MESSAGES = [
+  { emoji: "🐌", text: "Your phone is doing its best..." },
+  { emoji: "🧓", text: "AI is thinking really hard..." },
+  { emoji: "🔥", text: "Phone getting toasty yet?" },
+  { emoji: "😅", text: "It's not us, it's your phone!" },
+  { emoji: "🐢", text: "Slow and steady wins the race..." },
+  { emoji: "🧠", text: "2 billion calculations happening..." },
+  { emoji: "📱", text: "Your phone: 'I'm trying!'" },
+  { emoji: "💪", text: "Little phone, big dreams..." },
+  { emoji: "🎢", text: "Enjoying the wait?" },
+  { emoji: "☕", text: "Maybe grab a coffee?" },
+  { emoji: "🦥", text: "On-device AI be like..." },
+  { emoji: "🚀", text: "Pro users are done by now..." },
+];
 
+const EMOJIS_CYCLE = ["🤔", "🧐", "🔍", "👀", "🤨", "💭"];
+
+export default function LoadingScreen({ message, showTimer = true, onGoPro }: LoadingScreenProps) {
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [funnyIndex, setFunnyIndex] = useState(0);
+  const [emojiIndex, setEmojiIndex] = useState(0);
+
+  // Timer
   useEffect(() => {
-    // Ping animation (outer circle)
-    pingScale.value = withRepeat(
-      withSequence(
-        withTiming(1.5, { duration: 1000 }),
-        withTiming(1, { duration: 0 })
-      ),
-      -1,
-      false
-    );
-
-    // Bounce animation (inner circle)
-    bounceY.value = withRepeat(
-      withSequence(
-        withTiming(-10, { duration: 500 }),
-        withTiming(0, { duration: 500 })
-      ),
-      -1,
-      true
-    );
-
-    // Rotate animation (message box)
-    rotate.value = withRepeat(
-      withSequence(
-        withTiming(-2, { duration: 2000 }),
-        withTiming(2, { duration: 2000 })
-      ),
-      -1,
-      true
-    );
+    const interval = setInterval(() => {
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
-  const pingStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: pingScale.value }],
-      opacity: interpolate(pingScale.value, [1, 1.5], [0.2, 0]),
-    };
-  });
+  // Rotate funny messages every 4 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFunnyIndex(prev => (prev + 1) % FUNNY_MESSAGES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const bounceStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateY: bounceY.value }],
-    };
-  });
+  // Rotate emoji every 2 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setEmojiIndex(prev => (prev + 1) % EMOJIS_CYCLE.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const messageBoxStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${rotate.value}deg` }],
+  useEffect(() => {
+    const bounce = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: -10,
+          duration: 500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 0,
+          duration: 500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    bounce.start();
+    pulse.start();
+
+    return () => {
+      bounce.stop();
+      pulse.stop();
     };
-  });
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
+  const currentFunny = FUNNY_MESSAGES[funnyIndex];
 
   return (
     <View style={styles.container}>
       <View style={styles.circleContainer}>
-        {/* Outer ping circle */}
-        <Animated.View style={[styles.outerCircle, pingStyle]} />
-        
-        {/* Inner bouncing circle */}
-        <Animated.View style={[styles.innerCircle, bounceStyle]}>
-          <Text style={styles.emoji}>🤔</Text>
+        <Animated.View
+          style={[
+            styles.outerCircle,
+            { transform: [{ scale: pulseAnim }] }
+          ]}
+        />
+
+        <Animated.View
+          style={[
+            styles.innerCircle,
+            { transform: [{ translateY: bounceAnim }] }
+          ]}
+        >
+          <Text style={styles.emoji}>{EMOJIS_CYCLE[emojiIndex]}</Text>
         </Animated.View>
       </View>
 
-      <Text style={styles.title}>Thinking...</Text>
+      {showTimer && (
+        <View style={styles.timerContainer}>
+          <Text style={styles.timerLabel}>ELAPSED TIME</Text>
+          <Text style={styles.timerValue}>{formatTime(elapsedTime)}</Text>
+        </View>
+      )}
 
-      <Animated.View style={[styles.messageBox, messageBoxStyle]}>
-        <Text style={styles.messageText}>{message}</Text>
-      </Animated.View>
+      <View style={styles.funnyBox}>
+        <Text style={styles.funnyEmoji}>{currentFunny.emoji}</Text>
+        <Text style={styles.funnyText}>{currentFunny.text}</Text>
+      </View>
+
+      {message && (
+        <View style={styles.messageBox}>
+          <Text style={styles.messageText}>{message}</Text>
+        </View>
+      )}
+
+      <View style={styles.proContainer}>
+        <Text style={styles.proHint}>
+          Tired of waiting? {"\n"}
+          <Text style={styles.proHintBold}>Pro users get instant results!</Text>
+        </Text>
+        <TouchableOpacity
+          style={styles.proButton}
+          onPress={onGoPro}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.proButtonText}>GO PRO</Text>
+          <Text style={styles.proButtonSubtext}>10x faster</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.disclaimer}>
+        Running AI on your phone is like{"\n"}
+        teaching a hamster quantum physics 🐹
+      </Text>
     </View>
   );
 }
@@ -102,7 +180,7 @@ const styles = StyleSheet.create({
   circleContainer: {
     width: 128,
     height: 128,
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
     position: "relative",
     alignItems: "center",
     justifyContent: "center",
@@ -115,6 +193,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.card.dailySummary,
     borderWidth: 4,
     borderColor: theme.colors.text,
+    opacity: 0.3,
   },
   innerCircle: {
     width: 104,
@@ -129,25 +208,99 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 48,
   },
-  title: {
+  timerContainer: {
+    alignItems: "center",
+    marginBottom: theme.spacing.lg,
+  },
+  timerLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textTertiary,
+    letterSpacing: 2,
+    marginBottom: theme.spacing.xs,
+  },
+  timerValue: {
     fontSize: theme.typography.fontSize["3xl"],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-    letterSpacing: -0.5,
+    fontVariant: ["tabular-nums"],
   },
-  messageBox: {
+  funnyBox: {
     backgroundColor: theme.colors.card,
-    borderWidth: 2,
+    borderWidth: 4,
     borderColor: theme.colors.text,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.xl,
+    marginBottom: theme.spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    minHeight: 60,
   },
-  messageText: {
+  funnyEmoji: {
+    fontSize: 28,
+  },
+  funnyText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
+    flex: 1,
+  },
+  messageBox: {
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.xl,
+  },
+  messageText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.textSecondary,
     textAlign: "center",
+  },
+  proContainer: {
+    alignItems: "center",
+    marginBottom: theme.spacing.xl,
+  },
+  proHint: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.textTertiary,
+    textAlign: "center",
+    marginBottom: theme.spacing.md,
+    lineHeight: 20,
+  },
+  proHintBold: {
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textSecondary,
+  },
+  proButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 4,
+    borderColor: theme.colors.text,
+    alignItems: "center",
+    ...theme.shadows.md,
+  },
+  proButtonText: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: "#fff",
+    letterSpacing: 1,
+  },
+  proButtonSubtext: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: "rgba(255,255,255,0.8)",
+  },
+  disclaimer: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textTertiary,
+    textAlign: "center",
+    lineHeight: 16,
+    fontStyle: "italic",
   },
 });

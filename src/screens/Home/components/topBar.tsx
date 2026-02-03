@@ -1,34 +1,36 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@/src/theme";
-import Animated, { interpolate, SharedValue, useDerivedValue } from "react-native-reanimated";
 
-export default function TopBar({ scrollY }: { scrollY: SharedValue<number> }) {
-      // get todays date
-      const today = new Date();
-      const month = today.toLocaleDateString('en-US', { month: 'long' });
-      const dayOfMonth = today.getDate().toString().slice(0, 2);
- 
-  const titleOpacity = useDerivedValue(() => {
-    return interpolate(scrollY.value, [0, 50], [1, 0]);
-  });
-  const dateOpacity = useDerivedValue(() => {
-    return interpolate(scrollY.value, [0, 50], [1, 0]);
-  });
-    return (
-      <>
-        <Animated.View style={styles.container}>
-          <Animated.Text style={[styles.title, { opacity: titleOpacity }]}>
-            focal<Text style={styles.dot}>.</Text>
-          </Animated.Text>
-          <Animated.Text style={[styles.date, { opacity: dateOpacity }]}>{month} {dayOfMonth}</Animated.Text>
-        </Animated.View>
-      </>
+interface TopBarProps {
+  onSettingsPress?: () => void;
+}
 
-    )
-  }
+export default function TopBar({ onSettingsPress }: TopBarProps) {
+  const today = new Date();
+  const month = today.toLocaleDateString('en-US', { month: 'long' });
+  const dayOfMonth = today.getDate().toString().slice(0, 2);
 
-  const styles = StyleSheet.create({
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>
+        focal<Text style={styles.dot}>.</Text>
+      </Text>
+      <View style={styles.rightSection}>
+        <Text style={styles.date}>{month} {dayOfMonth}</Text>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={onSettingsPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="settings-outline" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
+const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -43,9 +45,24 @@ export default function TopBar({ scrollY }: { scrollY: SharedValue<number> }) {
   dot: {
     color: theme.card.dailySummary,
   },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
   date: {
     fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.regular,
     color: theme.colors.textSecondary,
   },
-})
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.text,
+  },
+});

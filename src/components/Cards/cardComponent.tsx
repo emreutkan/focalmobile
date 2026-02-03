@@ -12,7 +12,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-
+import { useEffect, useState } from "react";
 const OFFSET = 4;
 
 interface CardComponentProps {
@@ -28,6 +28,7 @@ interface CardComponentProps {
   padding?: number;
   showBorder?: boolean;
   showShadow?: boolean;
+  showPressAnimation?: boolean;
 }
 
 export default function CardComponent({
@@ -43,11 +44,11 @@ export default function CardComponent({
   padding = theme.spacing.sm,
   showBorder = true,
   showShadow = true,
+  showPressAnimation = false,
 }: CardComponentProps) {
   // Shared tap animation values (same across all cards)
   const translate = useSharedValue(0);
   const borderOpacity = useSharedValue(1);
-
   // Tap animation style (shared across all cards)
   const tapAnimatedStyle = useAnimatedStyle(() => {
     return {
@@ -70,8 +71,21 @@ export default function CardComponent({
     translate.value = withTiming(OFFSET, { duration: 90 });
     borderOpacity.value = withTiming(0, { duration: 60 });
     // Haptic feedback on press
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
+
+  useEffect(() => {
+    if (showPressAnimation) {
+      translate.value = withTiming(OFFSET, { duration: 160 });
+      borderOpacity.value = withTiming(0, { duration: 100 });
+      // Haptic feedback on press
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      setTimeout(() => {
+        translate.value = withTiming(0, { duration: 140 });
+        borderOpacity.value = withTiming(1, { duration: 100 });
+      }, 160);
+    }
+  }, [showPressAnimation]);
 
   const pressOut = () => {
     translate.value = withTiming(0, { duration: 140 });

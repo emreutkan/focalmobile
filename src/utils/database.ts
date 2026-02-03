@@ -39,6 +39,7 @@ export const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS meal_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL DEFAULT 1,
+        meal_name TEXT,
         image_url TEXT,
         health_score INTEGER,
         reasoning TEXT,
@@ -58,6 +59,13 @@ export const initDatabase = async () => {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       );
     `);
+
+    // Add meal_name column if it doesn't exist (migration for existing users)
+    try {
+      await database.execAsync(`ALTER TABLE meal_logs ADD COLUMN meal_name TEXT;`);
+    } catch (e) {
+      // Column already exists, ignore
+    }
 
     // Create FOOD_ITEMS table
     await database.execAsync(`
@@ -80,26 +88,28 @@ export const initDatabase = async () => {
 
 // Save a meal to the database
 export interface SaveMealParams {
+  mealName?: string;
   imageUrl?: string;
   nutrition: NutritionResult;
   foodItems: FoodItem[];
 }
 
 export const saveMeal = async (params: SaveMealParams): Promise<number> => {
-  const { imageUrl, nutrition, foodItems } = params;
+  const { mealName, imageUrl, nutrition, foodItems } = params;
   const database = await getDatabase();
 
   try {
     // Insert meal log
     const result = await database.runAsync(
       `INSERT INTO meal_logs (
-        user_id, image_url, health_score, reasoning,
+        user_id, meal_name, image_url, health_score, reasoning,
         calories, protein, carbs, fat, fiber, sugar,
         saturated_fat, sodium, cholesterol,
         micros, bad_ingredients, good_ingredients
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         1, // default user
+        mealName || null,
         imageUrl || null,
         nutrition.healthScore,
         nutrition.reasoning,
@@ -144,6 +154,7 @@ export const getTodaysMeals = async () => {
 
   const meals = await database.getAllAsync<{
     id: number;
+    meal_name: string | null;
     calories: number;
     protein: number;
     carbs: number;
@@ -151,7 +162,7 @@ export const getTodaysMeals = async () => {
     health_score: number;
     created_at: string;
   }>(
-    `SELECT id, calories, protein, carbs, fat, health_score, created_at
+    `SELECT id, meal_name, calories, protein, carbs, fat, health_score, created_at
      FROM meal_logs
      WHERE date(created_at) = date(?)
      ORDER BY created_at DESC`,
@@ -202,6 +213,7 @@ export const getMealById = async (mealId: number) => {
 
   const meal = await database.getFirstAsync<{
     id: number;
+    meal_name: string | null;
     image_url: string | null;
     health_score: number;
     reasoning: string;
@@ -264,4 +276,71 @@ export const updateUserGoals = async (calories: number, protein: number) => {
     `UPDATE users SET goal_calories = ?, goal_protein = ? WHERE id = 1`,
     [calories, protein]
   );
+};
+
+// Get macro breakdown for a specific macro type
+export const getMacroBreakdown = async (macroType: 'protein' | 'carbs' | 'fat' | 'calories') => {
+  const database = await getDatabase();
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Safe column mapping to prevent SQL injection
+  const columnMap: Record<string, string> = {
+    protein: 'protein',
+    carbs: 'carbs',
+    fat: 'fat',
+    calories: 'calories',
+  };
+  
+  const column = columnMap[macroType];
+  if (!column) {
+    throw new Error(`Invalid macro type: ${macroType}`);
+  }
+  
+  const meals = await database.getAllAsync<{
+    id: number;
+    name: string;
+    value: number;
+    created_at: string;
+  }>(
+    `SELECT 
+      ml.id,
+      COALESCE(
+        (SELECT fi.name
+         FROM food_items fi 
+         WHERE fi.meal_log_id = ml.id 
+         LIMIT 1),
+        'Meal'
+      ) as name,
+      ml.${column} as value,
+      ml.created_at
+     FROM meal_logs ml
+     WHERE date(ml.created_at) = date(?)
+       AND ml.${column} > 0
+     ORDER BY ml.created_at DESC`,
+    [today]
+  );
+  
+  return meals.map(meal => ({
+    name: meal.name || 'Meal',
+    value: meal.value,
+    time: new Date(meal.created_at).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }),
+  }));
+};
+
+// Delete all user data
+export const deleteAllData = async () => {
+  const database = await getDatabase();
+
+  try {
+    await database.execAsync(`DELETE FROM food_items;`);
+    await database.execAsync(`DELETE FROM meal_logs;`);
+    console.log('All data deleted successfully');
+  } catch (error) {
+    console.error('Error deleting data:', error);
+    throw error;
+  }
 };

@@ -8,15 +8,25 @@ import LoadingScreen from "@/src/components/LoadingScreen";
 import { theme } from "@/src/theme";
 
 export default function FoodReviewScreen() {
-  const { items: itemsParam } = useLocalSearchParams<{ items: string }>();
+  const { items: itemsParam, mealName: mealNameParam } = useLocalSearchParams<{
+    items: string;
+    mealName: string;
+  }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+
   const [items, setItems] = useState<FoodItem[]>(() => {
     try {
       return itemsParam ? JSON.parse(decodeURIComponent(itemsParam)) : [];
     } catch {
       return [];
+    }
+  });
+  const [mealName] = useState(() => {
+    try {
+      return mealNameParam ? decodeURIComponent(mealNameParam) : '';
+    } catch {
+      return '';
     }
   });
   const [calculating, setCalculating] = useState(false);
@@ -55,6 +65,7 @@ export default function FoodReviewScreen() {
         params: {
           nutritionData: encodeURIComponent(JSON.stringify(nutritionResult)),
           foodItems: encodeURIComponent(JSON.stringify(items)),
+          mealName: encodeURIComponent(mealName),
         },
       });
     } catch (error: any) {

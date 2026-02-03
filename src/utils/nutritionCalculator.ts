@@ -1,5 +1,5 @@
 import { initializeModel } from "./ModelManagement/modelInitializer";
-import { Models, MICRONUTRIENTS, BAD_INGREDIENTS, GOOD_INGREDIENTS } from "../constants";
+import { Models } from "../constants";
 import { FoodItem } from "../components/ReviewItems";
 
 export interface NutritionResult {
@@ -21,111 +21,77 @@ export interface NutritionResult {
   goodIngredients: string[];
 }
 
-// Create compact lists for the AI prompt
-const MICRO_LIST = MICRONUTRIENTS.slice(0, 30).join(',');
-const BAD_LIST = BAD_INGREDIENTS.slice(0, 25).join(',');
-const GOOD_LIST = GOOD_INGREDIENTS.slice(0, 25).join(',');
-
 export const calculateNutrition = async (items: FoodItem[]): Promise<NutritionResult> => {
-  const prompt = `Analyze nutrition for: ${JSON.stringify(items)}
+  // Format items for the prompt with clear gram amounts
+  const foodList = items.map(i => `- ${i.name}: ${i.estimatedGrams}g`).join('\n');
 
-RESPOND WITH ONLY VALID JSON. NO OTHER TEXT.
+  const prompt = `Calculate nutrition for this meal:
 
-Use these reference lists:
-MICROS: ${MICRO_LIST}
-BAD: ${BAD_LIST}
-GOOD: ${GOOD_LIST}
+${foodList}
 
-Return this exact JSON structure:
-{"macros":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"saturatedFat":0,"sodium":0,"cholesterol":0},"micros":[],"healthScore":0,"reasoning":"","badIngredients":[],"goodIngredients":[]}
+Respond with ONLY this JSON (fill in real calculated values):
+{"macros":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0},"micros":["vitamin_a","iron"],"healthScore":75,"reasoning":"Brief explanation","badIngredients":["if any"],"goodIngredients":["protein sources","vegetables"]}
 
-Rules:
-- calories/protein/carbs/fat/fiber/sugar as numbers (grams, calories for calories)
-- saturatedFat/sodium/cholesterol as numbers (grams, mg for sodium/cholesterol)
-- micros: array of micronutrients present from the MICROS list
-- healthScore: 0-100 based on nutritional quality
-- reasoning: brief 1-2 sentence explanation
-- badIngredients: items from BAD list if detected (especially for fast food)
-- goodIngredients: items from GOOD list if detected`;
+IMPORTANT:
+- Calculate realistic calories based on gram weights provided
+- Protein: ~4 cal/g, Carbs: ~4 cal/g, Fat: ~9 cal/g
+- healthScore: 0-100 (higher = healthier)
+- List specific micronutrients present
+
+JSON only:`;
 
   try {
     console.log('=== NUTRITION CALCULATION START ===');
-    console.log('Food items sent to AI:', JSON.stringify(items, null, 2));
-    console.log('Number of items:', items.length);
+    console.log('Food items:', JSON.stringify(items, null, 2));
 
     const llamaContext = await initializeModel(Models.main);
 
-    console.log('Calling AI completion for nutrition calculation...');
+    console.log('Calling AI completion...');
 
     const completion = await llamaContext.completion({
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.2,
+      prompt: prompt,
+      temperature: 0.3,
       top_p: 0.9,
-      n_predict: 1024,
+      n_predict: 512,
     });
 
     const text = completion.text || '';
-    console.log('=== AI RESPONSE (NUTRITION CALCULATION) ===');
-    console.log('Full AI response:', text);
-    console.log('Response length:', text.length);
+    console.log('AI response:', text);
 
     // Try to extract JSON from the response
-    let jsonText = text;
-
-    // Look for JSON object in the response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      jsonText = jsonMatch[0];
-      console.log('Found JSON in response, extracting...');
-    } else {
-      console.log('No JSON found in response, will try text extraction');
+      try {
+        const json = JSON.parse(jsonMatch[0]);
+        console.log('Parsed JSON:', JSON.stringify(json, null, 2));
+
+        return {
+          macros: {
+            calories: json.macros?.calories || 0,
+            protein: json.macros?.protein || 0,
+            carbs: json.macros?.carbs || 0,
+            fat: json.macros?.fat || 0,
+            fiber: json.macros?.fiber || 0,
+            sugar: json.macros?.sugar || 0,
+            saturatedFat: json.macros?.saturatedFat || 0,
+            sodium: json.macros?.sodium || 0,
+            cholesterol: json.macros?.cholesterol || 0,
+          },
+          micros: Array.isArray(json.micros) ? json.micros : [],
+          healthScore: json.healthScore || 0,
+          reasoning: json.reasoning || "No reasoning provided.",
+          badIngredients: Array.isArray(json.badIngredients) ? json.badIngredients : [],
+          goodIngredients: Array.isArray(json.goodIngredients) ? json.goodIngredients : [],
+        };
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+      }
     }
 
-    try {
-      const json = JSON.parse(jsonText);
-      console.log('Parsed JSON result:', JSON.stringify(json, null, 2));
-
-      // Validate and return the result
-      const result: NutritionResult = {
-        macros: {
-          calories: json.macros?.calories || 0,
-          protein: json.macros?.protein || 0,
-          carbs: json.macros?.carbs || 0,
-          fat: json.macros?.fat || 0,
-          fiber: json.macros?.fiber || 0,
-          sugar: json.macros?.sugar || 0,
-          saturatedFat: json.macros?.saturatedFat || 0,
-          sodium: json.macros?.sodium || 0,
-          cholesterol: json.macros?.cholesterol || 0,
-        },
-        micros: Array.isArray(json.micros) ? json.micros : [],
-        healthScore: json.healthScore || 0,
-        reasoning: json.reasoning || "No reasoning provided.",
-        badIngredients: Array.isArray(json.badIngredients) ? json.badIngredients : [],
-        goodIngredients: Array.isArray(json.goodIngredients) ? json.goodIngredients : [],
-      };
-
-      console.log('Final nutrition result:', JSON.stringify(result, null, 2));
-      console.log('=== NUTRITION CALCULATION END ===');
-
-      return result;
-    } catch (parseError) {
-      console.error('Failed to parse JSON from response:', parseError);
-      console.log('Attempting text extraction fallback...');
-      // Try to extract values from text if JSON parsing fails
-      const fallbackResult = extractNutritionFromText(text);
-      console.log('Fallback result:', JSON.stringify(fallbackResult, null, 2));
-      console.log('=== NUTRITION CALCULATION END (FALLBACK) ===');
-      return fallbackResult;
-    }
+    // Fallback
+    return extractNutritionFromText(text);
   } catch (error: any) {
     console.error("Error calculating nutrition:", error);
-    // Return empty fallback
     return {
       macros: { calories: 0, protein: 0, carbs: 0, fat: 0 },
       micros: [],
@@ -137,20 +103,9 @@ Rules:
   }
 };
 
-// Fallback function to extract nutrition data from unstructured text
 function extractNutritionFromText(text: string): NutritionResult {
   const result: NutritionResult = {
-    macros: {
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      fiber: 0,
-      sugar: 0,
-      saturatedFat: 0,
-      sodium: 0,
-      cholesterol: 0,
-    },
+    macros: { calories: 0, protein: 0, carbs: 0, fat: 0 },
     micros: [],
     healthScore: 0,
     reasoning: text.substring(0, 200),
@@ -158,21 +113,16 @@ function extractNutritionFromText(text: string): NutritionResult {
     goodIngredients: [],
   };
 
-  // Try to extract numbers for macros
   const caloriesMatch = text.match(/calories?[:\s]+(\d+)/i);
   const proteinMatch = text.match(/protein[:\s]+(\d+)/i);
   const carbsMatch = text.match(/carbs?[:\s]+(\d+)/i);
   const fatMatch = text.match(/fat[:\s]+(\d+)/i);
-  const fiberMatch = text.match(/fiber[:\s]+(\d+)/i);
-  const sugarMatch = text.match(/sugar[:\s]+(\d+)/i);
   const scoreMatch = text.match(/health\s*score[:\s]+(\d+)/i);
 
   if (caloriesMatch) result.macros.calories = parseInt(caloriesMatch[1]);
   if (proteinMatch) result.macros.protein = parseInt(proteinMatch[1]);
   if (carbsMatch) result.macros.carbs = parseInt(carbsMatch[1]);
   if (fatMatch) result.macros.fat = parseInt(fatMatch[1]);
-  if (fiberMatch) result.macros.fiber = parseInt(fiberMatch[1]);
-  if (sugarMatch) result.macros.sugar = parseInt(sugarMatch[1]);
   if (scoreMatch) result.healthScore = parseInt(scoreMatch[1]);
 
   return result;

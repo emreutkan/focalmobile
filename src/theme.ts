@@ -12,7 +12,7 @@ export const theme = {
       secondaryLight: '#7D7AEA',
       
       // Neutrals
-      background: '##fffdf5',
+      background: '#fffdf5',
       surface: '#F2F2F7',
       card: '#FFFFFF',
       
@@ -84,6 +84,7 @@ export const theme = {
         '2xl': 24,
         '3xl': 30,
         '4xl': 36,
+        '5xl': 48,
       },
       
       // Line heights

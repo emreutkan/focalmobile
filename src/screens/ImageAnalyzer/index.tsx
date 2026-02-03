@@ -1,51 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { theme } from "@/src/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { initializeModel } from "@/src/utils/ModelManagement/modelInitializer";
-import { Models } from "@/src/constants";
 import RNFS from "react-native-fs";
 import LoadingScreen from "@/src/components/LoadingScreen";
 import { identifyFoodFromImage } from "@/src/utils/foodIdentifier";
+import { useModel } from "@/src/contexts/ModelContext";
 
 export default function ImageAnalyzerScreen() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+  const { isModelReady } = useModel();
+
   const [analyzing, setAnalyzing] = useState(false);
-  const [initializing, setInitializing] = useState(false);
-  const [progress, setProgress] = useState({ message: "", progress: 0 });
   const [error, setError] = useState<string>("");
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
-  // Auto-initialize model when screen loads
+  // Auto-analyze image once model is ready
   useEffect(() => {
-    const init = async () => {
-      try {
-        setInitializing(true);
-        setError("");
-        await initializeModel(Models.main, (message, progress) => {
-          setProgress({ message, progress });
-        });
-      } catch (err: any) {
-        setError(err.message || "Failed to initialize model");
-      } finally {
-        setInitializing(false);
-      }
-    };
-    init();
-  }, []);
-
-  // Auto-analyze image once model is initialized
-  useEffect(() => {
-    if (!initializing && imageUri && !analyzing && !hasAnalyzed) {
+    if (isModelReady && imageUri && !analyzing && !hasAnalyzed) {
       setHasAnalyzed(true);
       analyzeImage(imageUri);
     }
-  }, [initializing, imageUri, analyzing, hasAnalyzed]);
+  }, [isModelReady, imageUri, analyzing, hasAnalyzed]);
 
   const convertUriToFilePath = async (uri: string): Promise<string> => {
     // If it's already a file path, verify it exists
@@ -125,21 +105,23 @@ export default function ImageAnalyzerScreen() {
       console.log(`Image file verified: ${stats.size} bytes`);
       
       console.log('Starting food identification...');
-      
+
       // Use the dedicated food identification function
-      const foodItems = await identifyFoodFromImage(imageFilePath);
-      
-      console.log('Food items identified:', foodItems.length);
-      
-      if (foodItems.length === 0) {
-        throw new Error('No food items identified in the image');
+      const result = await identifyFoodFromImage(imageFilePath);
+
+      console.log('Food identification result:', result.isFood, result.items.length);
+
+      // Check if food was detected
+      if (!result.isFood || result.items.length === 0) {
+        throw new Error(result.message || "No food detected in this image. Please take a photo of food.");
       }
 
       // Navigate to review screen with extracted items
       router.push({
         pathname: "/foodReview",
         params: {
-          items: encodeURIComponent(JSON.stringify(foodItems)),
+          items: encodeURIComponent(JSON.stringify(result.items)),
+          mealName: encodeURIComponent(result.mealName || ''),
         },
       });
     } catch (error: any) {
@@ -157,43 +139,54 @@ export default function ImageAnalyzerScreen() {
     }
   };
 
-  // Show loading screen during initialization or analysis
-  if (initializing || analyzing) {
-    const loadingMessage = initializing 
-      ? progress.message || "Loading models..." 
-      : "Analyzing your food...";
-    
-    return <LoadingScreen message={loadingMessage} />;
+  // Show loading screen during analysis
+  if (analyzing) {
+    return <LoadingScreen message="Analyzing your food..." />;
   }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.title}>Analyzing Image</Text>
-      
+      <Text style={styles.title}>ANALYZING</Text>
+
       {imageUri && (
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.image}
-          contentFit="contain"
-        />
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.image}
+            contentFit="cover"
+          />
+        </View>
       )}
-      
+
       {error && (
         <View style={styles.errorContainer}>
+          <Text style={styles.errorEmoji}>🍽️</Text>
+          <Text style={styles.errorTitle}>OOPS!</Text>
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
-      
-      <TouchableOpacity 
-        style={[
-          styles.button, 
-          (!imageUri) && styles.buttonDisabled
-        ]} 
-        onPress={handleAnalyze}
-        disabled={!imageUri}
-      >
-        <Text style={styles.buttonText}>Analyze Image</Text>
-      </TouchableOpacity>
+
+      {error ? (
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.backButtonText}>TRY AGAIN</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[
+            styles.button,
+            (!imageUri) && styles.buttonDisabled
+          ]}
+          onPress={handleAnalyze}
+          disabled={!imageUri}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.buttonText}>ANALYZE</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -202,20 +195,90 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
     alignItems: "center",
   },
   title: {
-    fontSize: theme.typography.fontSize["2xl"],
+    fontSize: theme.typography.fontSize["3xl"],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
     marginBottom: theme.spacing.lg,
+    letterSpacing: 2,
+  },
+  imageContainer: {
+    width: "100%",
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 4,
+    borderColor: theme.colors.text,
+    overflow: "hidden",
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.md,
   },
   image: {
     width: "100%",
-    height: 400,
-    borderRadius: theme.borderRadius.lg,
+    height: 350,
+  },
+  errorContainer: {
+    width: "100%",
+    padding: theme.spacing.xl,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 4,
+    borderColor: theme.colors.error,
     marginBottom: theme.spacing.lg,
+    alignItems: "center",
+    ...theme.shadows.md,
+  },
+  errorEmoji: {
+    fontSize: 48,
+    marginBottom: theme.spacing.sm,
+  },
+  errorTitle: {
+    fontSize: theme.typography.fontSize["2xl"],
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.error,
+    marginBottom: theme.spacing.sm,
+    letterSpacing: 1,
+  },
+  errorText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  button: {
+    backgroundColor: "#4ecdc4",
+    paddingHorizontal: theme.spacing.xxl,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 4,
+    borderColor: theme.colors.text,
+    ...theme.shadows.md,
+  },
+  buttonDisabled: {
+    backgroundColor: theme.colors.textTertiary,
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: theme.colors.text,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    letterSpacing: 1,
+  },
+  backButton: {
+    backgroundColor: "#ff6b6b",
+    paddingHorizontal: theme.spacing.xxl,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 4,
+    borderColor: theme.colors.text,
+    ...theme.shadows.md,
+  },
+  backButtonText: {
+    color: theme.colors.text,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    letterSpacing: 1,
   },
   progressContainer: {
     width: "100%",
@@ -247,34 +310,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textSecondary,
     textAlign: "center",
-  },
-  errorContainer: {
-    width: "100%",
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.error + "20",
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.md,
-  },
-  errorText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.error,
-    textAlign: "center",
-  },
-  button: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.lg,
-  },
-  buttonDisabled: {
-    backgroundColor: theme.colors.textTertiary,
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: theme.colors.background,
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semibold,
   },
   loader: {
     marginVertical: theme.spacing.lg,
