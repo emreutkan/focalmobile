@@ -3,9 +3,9 @@ import { AppState, AppStateStatus } from 'react-native';
 import RNFS from 'react-native-fs';
 import { Models } from '../constants';
 
-export type ModelStatus = 'checking' | 'not_downloaded' | 'downloading' | 'initializing' | 'ready' | 'error';
+export type ModelStatus = 'checking' | 'not_downloaded' | 'downloaded' | 'downloading' | 'initializing' | 'ready' | 'error';
 
-// Simple file-based storage for dismissed date (avoids adding AsyncStorage dependency)
+// Simple file-based storage for dismissed date
 const DISMISSED_FILE = `${RNFS.DocumentDirectoryPath}/modal_dismissed_date.txt`;
 
 interface ModelState {
@@ -24,7 +24,9 @@ export interface ModelContextType extends ModelState {
   checkModelStatus: () => Promise<void>;
   startDownload: () => Promise<void>;
   dismissForToday: () => Promise<void>;
+  initializeModelForAnalysis: () => Promise<boolean>;
   isModelReady: boolean;
+  isModelDownloaded: boolean;
 }
 
 export const ModelContext = createContext<ModelContextType | null>(null);
@@ -52,7 +54,6 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const appState = useRef(AppState.currentState);
   const isChecking = useRef(false);
-  const hasInitializedOnce = useRef(false);
 
   // Check if dismissed today on mount
   useEffect(() => {
@@ -81,6 +82,10 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  /**
+   * Check if model FILES are downloaded (no initialization!)
+   * This is fast and doesn't cause lag or heat
+   */
   const checkModelStatus = useCallback(async () => {
     if (isChecking.current) return;
     isChecking.current = true;
@@ -114,64 +119,16 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const filesDownloaded = mainReady && mmprojReady;
 
-      if (filesDownloaded) {
-        // If we've already initialized once, skip the initializing UI
-        // The model singleton will return cached context immediately
-        if (hasInitializedOnce.current) {
-          setState(prev => ({
-            ...prev,
-            status: 'ready',
-            mainModelReady: true,
-            mmprojModelReady: true,
-            downloadedSize,
-            downloadProgress: 100,
-          }));
-        } else {
-          // First time - show initializing UI
-          setState(prev => ({
-            ...prev,
-            status: 'initializing',
-            mainModelReady: true,
-            mmprojModelReady: true,
-            downloadedSize,
-            downloadProgress: 100,
-            downloadMessage: 'Waking up the AI...',
-          }));
-
-          try {
-            const { initializeModel } = await import('../utils/ModelManagement/modelInitializer');
-            await initializeModel(Models.main, (message) => {
-              setState(prev => ({
-                ...prev,
-                downloadMessage: message,
-              }));
-            });
-
-            hasInitializedOnce.current = true;
-            setState(prev => ({
-              ...prev,
-              status: 'ready',
-              downloadMessage: 'Ready!',
-            }));
-          } catch (initError: any) {
-            console.error('Error initializing model:', initError);
-            setState(prev => ({
-              ...prev,
-              status: 'error',
-              error: initError.message || 'Failed to initialize AI',
-            }));
-          }
-        }
-      } else {
-        setState(prev => ({
-          ...prev,
-          status: 'not_downloaded',
-          mainModelReady: mainReady,
-          mmprojModelReady: mmprojReady,
-          downloadedSize,
-          downloadProgress: (downloadedSize / prev.totalSize) * 100,
-        }));
-      }
+      // Just check if files exist - DON'T initialize here!
+      // This prevents lag and heat on app start
+      setState(prev => ({
+        ...prev,
+        status: filesDownloaded ? 'downloaded' : 'not_downloaded',
+        mainModelReady: mainReady,
+        mmprojModelReady: mmprojReady,
+        downloadedSize,
+        downloadProgress: filesDownloaded ? 100 : (downloadedSize / prev.totalSize) * 100,
+      }));
     } catch (error: any) {
       console.error('Error checking model status:', error);
       setState(prev => ({
@@ -184,9 +141,57 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  /**
+   * Initialize model ONLY when user clicks analyze
+   * Called from ImageAnalyzer screen
+   */
+  const initializeModelForAnalysis = useCallback(async (): Promise<boolean> => {
+    // If already ready, return true immediately
+    if (state.status === 'ready') {
+      return true;
+    }
+
+    // If models aren't downloaded, can't initialize
+    if (state.status !== 'downloaded') {
+      console.log('Models not downloaded, cannot initialize');
+      return false;
+    }
+
+    try {
+      setState(prev => ({
+        ...prev,
+        status: 'initializing',
+        downloadMessage: 'Waking up the AI...',
+      }));
+
+      const { initializeModel } = await import('../utils/ModelManagement/modelInitializer');
+      await initializeModel(Models.main, (message) => {
+        setState(prev => ({
+          ...prev,
+          downloadMessage: message,
+        }));
+      });
+
+      setState(prev => ({
+        ...prev,
+        status: 'ready',
+        downloadMessage: 'Ready!',
+      }));
+
+      return true;
+    } catch (initError: any) {
+      console.error('Error initializing model:', initError);
+      setState(prev => ({
+        ...prev,
+        status: 'error',
+        error: initError.message || 'Failed to initialize AI',
+      }));
+      return false;
+    }
+  }, [state.status]);
+
   const startDownload = useCallback(async () => {
     const { downloadModel } = await import('../utils/ModelManagement/modelDownloader');
-    const { initializeModel } = await import('../utils/ModelManagement/modelInitializer');
 
     setState(prev => ({
       ...prev,
@@ -202,7 +207,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await downloadModel(Models.main, (progress) => {
         setState(prev => ({
           ...prev,
-          downloadProgress: progress * 0.7, // Main model is 70% of progress
+          downloadProgress: progress * 0.7,
           downloadMessage: `Downloading AI model... ${progress.toFixed(0)}%`,
         }));
       });
@@ -213,31 +218,19 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await downloadModel(Models.mmproj, (progress) => {
         setState(prev => ({
           ...prev,
-          downloadProgress: 70 + progress * 0.2, // mmproj is 20% of progress
+          downloadProgress: 70 + progress * 0.3,
           downloadMessage: `Downloading vision model... ${progress.toFixed(0)}%`,
         }));
       });
       setState(prev => ({ ...prev, mmprojModelReady: true }));
 
-      // Initialize models
+      // Mark as downloaded but NOT initialized
+      // Initialization happens when user clicks analyze
       setState(prev => ({
         ...prev,
-        downloadProgress: 90,
-        downloadMessage: 'Initializing AI...',
-      }));
-      await initializeModel(Models.main, (message, progress) => {
-        setState(prev => ({
-          ...prev,
-          downloadProgress: 90 + progress * 0.1,
-          downloadMessage: message,
-        }));
-      });
-
-      setState(prev => ({
-        ...prev,
-        status: 'ready',
+        status: 'downloaded',
         downloadProgress: 100,
-        downloadMessage: 'Ready!',
+        downloadMessage: 'Download complete!',
       }));
     } catch (error: any) {
       console.error('Error downloading models:', error);
@@ -249,7 +242,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  // Check model status on mount
+  // Check model status on mount (fast file check only)
   useEffect(() => {
     checkModelStatus();
   }, [checkModelStatus]);
@@ -272,7 +265,9 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     checkModelStatus,
     startDownload,
     dismissForToday,
+    initializeModelForAnalysis,
     isModelReady: state.status === 'ready',
+    isModelDownloaded: state.status === 'downloaded' || state.status === 'ready',
   };
 
   return (

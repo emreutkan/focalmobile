@@ -17,7 +17,6 @@ import { Dimensions } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { initDatabase, getDailyTotals, getTodaysMeals, getMacroBreakdown, deleteMeal, getMealById } from "@/src/utils/database";
-import SettingsModal from "@/src/components/SettingsModal";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -510,12 +509,12 @@ export default function HomeScreen() {
                     theme.card.fatCard
                   }
                 />
-
+{/* 
                 <SettingsModal
                   visible={showSettingsModal}
                   onClose={() => setShowSettingsModal(false)}
                   onDataDeleted={loadData}
-                />
+                /> */}
             </View>
 
         </>

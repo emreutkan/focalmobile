@@ -3,110 +3,84 @@ import {
   Animated,
   Dimensions,
   Easing,
-  ImageBackground,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { theme } from "../theme";
 import { useModel } from "../contexts/ModelContext";
 import CardComponent from "./Cards/cardComponent";
+
 const { width: screenWidth } = Dimensions.get("window");
 
-const BG_IMAGE = require("../../assets/focal.png");
-
+/**
+ * Splash screen shown during initial app load
+ * Only shows during fast file checking - NOT during model initialization
+ * Model initialization now happens when user clicks analyze
+ */
 export default function ModelLoadingSplash() {
-  const {
-    status,
-    downloadMessage,
-    startDownload,
-    checkModelStatus,
-    error,
-    isModelReady,
-  } = useModel();
+  const { status } = useModel();
 
   const [visible, setVisible] = useState(true);
-  const [showDownloadCta, setShowDownloadCta] = useState(false);
   const [runPressAnimation, setRunPressAnimation] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
   const overlayTranslateX = useRef(new Animated.Value(0)).current;
-  const cardScale = useRef(new Animated.Value(1)).current;
   const dismissing = useRef(false);
 
+  // Only show during 'checking' status (fast file check)
+  // Don't show during downloading/initializing - those are user-initiated actions
   const showSplash = useMemo(() => {
     if (!visible) return false;
-    if (status === "not_downloaded" || status === "error") return false;
-    return true;
+    // Only show for the initial quick check
+    return status === "checking";
   }, [status, visible]);
 
-  const message = useMemo(() => {
-    if (status === "checking") return "Checking model status...";
-    if (status === "downloading") return downloadMessage || "Downloading models...";
-    if (status === "initializing") return downloadMessage || "Loading models...";
-    if (status === "error") return error || "Something went wrong.";
-    if (status === "not_downloaded") return "Models are required to analyze your food.";
-    return "Loading...";
-  }, [status, downloadMessage, error]);
+  // Auto-dismiss when done checking
+  const isDoneChecking = useMemo(() => {
+    return status !== "checking";
+  }, [status]);
 
   useEffect(() => {
     if (!showSplash) return;
-    const isLoadingPhase =
-      status === "checking" || status === "downloading" || status === "initializing";
-    setShowDownloadCta(status === "not_downloaded");
 
     progress.stopAnimation();
     progress.setValue(0);
-    if (isLoadingPhase) {
-      Animated.timing(progress, {
-        toValue: 0.8,
-        duration: 1100,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [showSplash, status, progress]);
+
+    // Animate progress during checking
+    Animated.timing(progress, {
+      toValue: 0.8,
+      duration: 800,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  }, [showSplash, progress]);
 
   useEffect(() => {
     if (!showSplash || dismissing.current) return;
-    if (!isModelReady) return;
+    if (!isDoneChecking) return;
 
     dismissing.current = true;
     setRunPressAnimation(true);
 
-    const click = Animated.sequence([
-      Animated.timing(cardScale, {
-        toValue: 0.96,
-        duration: 90,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardScale, {
-        toValue: 1,
-        duration: 140,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]);
-
+    // Complete the progress bar and dismiss
     const fill = Animated.timing(progress, {
       toValue: 1,
-      duration: 420,
+      duration: 300,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     });
 
-    Animated.parallel([click, fill]).start(() => {
+    fill.start(() => {
       Animated.timing(overlayTranslateX, {
         toValue: -screenWidth,
-        duration: 520,
+        duration: 400,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start(() => {
         setVisible(false);
       });
     });
-  }, [isModelReady, showSplash, progress, overlayTranslateX, cardScale, runPressAnimation]);
+  }, [isDoneChecking, showSplash, progress, overlayTranslateX]);
 
   if (!showSplash) return null;
 
@@ -116,36 +90,27 @@ export default function ModelLoadingSplash() {
   });
 
   return (
-    <Animated.View
-    style={[styles.container]}
-      pointerEvents="none"
-    >
-        <View style={[styles.progressWrap]}>
-          <View style={styles.progressTrack}>
-            <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
-          </View>
+    <Animated.View style={[styles.container]} pointerEvents="none">
+      <View style={[styles.progressWrap]}>
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
         </View>
-        <View style={styles.cardContainer}>
-          
-          <CardComponent 
+      </View>
+      <View style={styles.cardContainer}>
+        <CardComponent
           showPressAnimation={runPressAnimation}
           height={180}
-           width={180}
-            backgroundColor={'#fed086'}
-            borderRadius={theme.borderRadius.xl}
-             padding={theme.spacing.xl}  
-              onPress={checkModelStatus} >
-            <Text style={styles.cardTitle}>focal</Text>
-           
-          </CardComponent>
-        </View>
-
-
-  
+          width={180}
+          backgroundColor={"#fed086"}
+          borderRadius={theme.borderRadius.xl}
+          padding={theme.spacing.xl}
+        >
+          <Text style={styles.cardTitle}>focal</Text>
+        </CardComponent>
+      </View>
     </Animated.View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -157,7 +122,6 @@ const styles = StyleSheet.create({
     left: -5,
     right: -5,
     zIndex: 1000,
-
   },
   cardTitle: {
     fontSize: theme.typography.fontSize["5xl"],
@@ -166,22 +130,19 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   progressTrack: {
-    
     height: 12,
     backgroundColor: "#fed086",
   },
   progressFill: {
     height: "100%",
     borderRadius: 50,
-
     backgroundColor: "black",
   },
-
   cardContainer: {
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
-    backgroundColor: '#fed086',
+    backgroundColor: "#fed086",
     paddingHorizontal: theme.spacing.xl,
   },
 });

@@ -17,6 +17,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { theme } from "../theme";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -54,12 +55,15 @@ export default function MacroBreakdownModal({
   React.useEffect(() => {
     if (visible) {
       translateY.value = withSpring(0, {
-        damping: 20,
-        stiffness: 90,
+        stiffness: 100,
+        damping: 15,
+        mass: 0.5,
+        velocity: 0,
+        overshootClamping: true,
       });
     } else {
       translateY.value = withTiming(SCREEN_HEIGHT, {
-        duration: 300,
+        duration: 1,
       });
     }
   }, [visible]);
@@ -76,7 +80,6 @@ export default function MacroBreakdownModal({
     <Modal
       visible={visible}
       transparent={true}
-      animationType="none"
       onRequestClose={onClose}
     >
       <TouchableOpacity
@@ -84,7 +87,7 @@ export default function MacroBreakdownModal({
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={styles.blurOverlay} />
+        <BlurView style={styles.blurOverlay} />
         <Animated.View style={[styles.modalContainer, modalStyle]}>
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
             {/* Header */}

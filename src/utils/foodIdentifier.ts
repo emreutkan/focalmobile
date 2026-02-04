@@ -41,28 +41,7 @@ Analyze the image and respond with JSON only:`;
     console.log('Image URI for AI:', imageUri);
     console.log('Calling AI completion...');
 
-    const completion = await llamaContext.completion({
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: imageUri },
-            },
-            {
-              type: 'text',
-              text: prompt,
-            },
-          ],
-        },
-      ],
-      temperature: 0.2,
-      top_p: 0.9,
-      n_predict: 1024,
-    });
-
-    const text = completion.text || '';
+    const text = await runFoodCompletion(llamaContext, imageUri, prompt, 2048);
     console.log('=== AI RESPONSE (FOOD IDENTIFICATION) ===');
     console.log('Full AI response:', text);
 
@@ -82,11 +61,11 @@ Analyze the image and respond with JSON only:`;
     const lowerText = text.toLowerCase();
     const hasNoFoodIndicator = noFoodIndicators.some(indicator => lowerText.includes(indicator));
 
-    // Try to parse JSON
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
+    // Try to parse JSON (extract first balanced object)
+    const jsonText = extractJsonObject(text);
+    if (jsonText) {
       try {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonText);
         console.log('Parsed JSON:', JSON.stringify(parsed, null, 2));
 
         // Check if explicitly marked as not food
@@ -131,6 +110,64 @@ Analyze the image and respond with JSON only:`;
       } catch (parseError) {
         console.warn('Failed to parse JSON:', parseError);
       }
+    }
+    // If response looks like truncated JSON, retry once with a shorter prompt
+    if (looksTruncatedJson(text)) {
+      const retryPrompt = `Identify the dish and list up to 5 components.
+Return ONLY compact JSON:
+{"isFood":true,"mealName":"Dish Name","items":[{"name":"Item","quantity":"1 serving","estimatedGrams":100}]}
+If no food: {"isFood":false,"items":[],"message":"No food"}`;
+
+      const retryText = await runFoodCompletion(llamaContext, imageUri, retryPrompt, 1024);
+      console.log('=== AI RESPONSE (FOOD IDENTIFICATION RETRY) ===');
+      console.log('Full AI response (retry):', retryText);
+
+      const retryJson = extractJsonObject(retryText);
+      if (retryJson) {
+        try {
+          const parsed = JSON.parse(retryJson);
+          console.log('Parsed JSON (retry):', JSON.stringify(parsed, null, 2));
+
+          if (parsed.isFood === false) {
+            return {
+              isFood: false,
+              items: [],
+              message: parsed.message || "No food detected in this image",
+            };
+          }
+
+          if (parsed.items && Array.isArray(parsed.items)) {
+            const items: FoodItem[] = parsed.items
+              .map((item: any) => ({
+                name: item.name || "",
+                quantity: item.quantity || "1 serving",
+                estimatedGrams: item.estimatedGrams || 0,
+              }))
+              .filter((item: FoodItem) => {
+                const invalidNames = ['welcome', 'message', 'text', 'app', 'button', 'image', 'photo', 'advertisement'];
+                const isInvalid = invalidNames.some(inv => item.name.toLowerCase().includes(inv));
+                return item.name.trim().length > 0 && !isInvalid && item.estimatedGrams > 0;
+              });
+
+            if (items.length > 0) {
+              const mealName = parsed.mealName || generateMealName(items);
+              return {
+                isFood: true,
+                mealName,
+                items,
+              };
+            }
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse JSON (retry):', parseError);
+        }
+      }
+
+      return {
+        isFood: false,
+        items: [],
+        message: "AI response was incomplete. Please try again.",
+      };
     }
 
     // If we detected no-food indicators, return no food
@@ -192,6 +229,81 @@ function extractFoodItemsFromText(text: string): FoodItem[] {
   }
 
   return items;
+}
+
+async function runFoodCompletion(
+  llamaContext: any,
+  imageUri: string,
+  prompt: string,
+  n_predict: number
+): Promise<string> {
+  const completion = await llamaContext.completion({
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: imageUri },
+          },
+          {
+            type: 'text',
+            text: prompt,
+          },
+        ],
+      },
+    ],
+    temperature: 0.2,
+    top_p: 0.9,
+    n_predict,
+  });
+
+  return completion.text || '';
+}
+
+function looksTruncatedJson(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{')) return false;
+  return extractJsonObject(trimmed) === null;
+}
+
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (ch === '\\') {
+        escape = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
 }
 
 // Generate a meal name from food items if AI didn't provide one

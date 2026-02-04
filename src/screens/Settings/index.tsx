@@ -8,10 +8,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme';
-import { deleteAllData } from '../utils/database';
+import { useRouter } from 'expo-router';
+import { theme } from '@/src/theme';
+import { deleteAllData } from '@/src/utils/database';
 
-const { width } = Dimensions.get('window');
 
 interface SettingsModalProps {
   visible: boolean;
@@ -32,41 +32,45 @@ const DELETE_STAGES = [
     title: 'ARE YOU SURE?',
     subtitle: 'This will delete all your meals',
     buttonText: 'YES, DELETE IT',
-    buttonColor: '#FF6B6B',
+    buttonColor: theme.colors.errorLight,
   },
   {
     emoji: '😰',
     title: 'REALLY REALLY?',
     subtitle: "You won't get it back...",
     buttonText: 'I UNDERSTAND',
-    buttonColor: '#FF5252',
+    buttonColor: theme.colors.errorMedium,
   },
   {
     emoji: '😱',
     title: 'LAST CHANCE!',
     subtitle: 'All your progress will be gone forever',
     buttonText: 'GOODBYE DATA',
-    buttonColor: '#FF1744',
+    buttonColor: theme.colors.errorDark,
   },
   {
     emoji: '💀',
     title: 'FINAL WARNING',
     subtitle: 'This is irreversible. No take-backsies!',
     buttonText: 'NUKE IT ALL',
-    buttonColor: '#D50000',
+    buttonColor: theme.colors.errorDarkest,
   },
 ];
 
 export default function SettingsModal({ visible, onClose, onDataDeleted }: SettingsModalProps) {
+  const router = useRouter();
   const [deleteStage, setDeleteStage] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleted, setDeleted] = useState(false);
+
+  const handleSwitchToPro = () => {
+    handleClose();
+  };
 
   const handleDeletePress = async () => {
     if (deleteStage < DELETE_STAGES.length - 1) {
       setDeleteStage(prev => prev + 1);
     } else {
-      // Final stage - actually delete
       try {
         setIsDeleting(true);
         await deleteAllData();
@@ -103,7 +107,7 @@ export default function SettingsModal({ visible, onClose, onDataDeleted }: Setti
             Time to eat some good food!
           </Text>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#4ecdc4' }]}
+            style={[styles.actionButton, { backgroundColor: theme.card.dailySummary }]}
             onPress={handleClose}
             activeOpacity={0.8}
           >
@@ -153,13 +157,41 @@ export default function SettingsModal({ visible, onClose, onDataDeleted }: Setti
       );
     }
 
-    // Initial settings view
     return (
       <>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>SETTINGS</Text>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Ionicons name="close" size={24} color={theme.colors.text} />
+            <Ionicons name="close" size={theme.sizes.iconLg} color={theme.colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>UPGRADE</Text>
+
+          <TouchableOpacity
+            style={styles.proCard}
+            onPress={handleSwitchToPro}
+            activeOpacity={0.9}
+          >
+            <View style={styles.proCardShadow} />
+            <View style={styles.proCardInner}>
+              <View style={styles.proCardHeader}>
+                <View style={styles.proIconCircle}>
+                  <Ionicons name="diamond" size={theme.sizes.iconLg} color={theme.colors.text} />
+                </View>
+                <View style={styles.proBadgeLarge}>
+                  <Ionicons name="star" size={10} color={theme.colors.text} />
+                  <Text style={styles.proBadgeLargeText}>PRO</Text>
+                </View>
+              </View>
+              <Text style={styles.proCardTitle}>UNLOCK FULL POTENTIAL</Text>
+              <Text style={styles.proCardSubtitle}>Unlimited scans, deep insights, cloud sync & more</Text>
+              <View style={styles.proCardCta}>
+                <Text style={styles.proCardCtaText}>GET STARTED</Text>
+                <Ionicons name="arrow-forward" size={theme.sizes.iconSm} color={theme.colors.text} />
+              </View>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -172,13 +204,13 @@ export default function SettingsModal({ visible, onClose, onDataDeleted }: Setti
             activeOpacity={0.8}
           >
             <View style={styles.menuItemIcon}>
-              <Ionicons name="trash-outline" size={24} color={theme.colors.error} />
+              <Ionicons name="trash-outline" size={theme.sizes.iconLg} color={theme.colors.error} />
             </View>
             <View style={styles.menuItemContent}>
               <Text style={styles.menuItemTitle}>Delete All Data</Text>
               <Text style={styles.menuItemSubtitle}>Remove all meals and start fresh</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
+            <Ionicons name="chevron-forward" size={theme.sizes.iconMd} color={theme.colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
@@ -187,7 +219,7 @@ export default function SettingsModal({ visible, onClose, onDataDeleted }: Setti
 
           <View style={styles.menuItem}>
             <View style={styles.menuItemIcon}>
-              <Ionicons name="information-circle-outline" size={24} color={theme.colors.primary} />
+              <Ionicons name="information-circle-outline" size={theme.sizes.iconLg} color={theme.colors.primary} />
             </View>
             <View style={styles.menuItemContent}>
               <Text style={styles.menuItemTitle}>Version</Text>
@@ -197,7 +229,7 @@ export default function SettingsModal({ visible, onClose, onDataDeleted }: Setti
 
           <View style={styles.menuItem}>
             <View style={styles.menuItemIcon}>
-              <Ionicons name="heart-outline" size={24} color="#FF6B6B" />
+              <Ionicons name="heart-outline" size={theme.sizes.iconLg} color={theme.card.fatCard} />
             </View>
             <View style={styles.menuItemContent}>
               <Text style={styles.menuItemTitle}>Made with love</Text>
@@ -231,14 +263,14 @@ export default function SettingsModal({ visible, onClose, onDataDeleted }: Setti
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: theme.colors.overlayDark,
     justifyContent: 'flex-end',
   },
   container: {
     backgroundColor: theme.colors.card,
     borderTopLeftRadius: theme.borderRadius.xl,
     borderTopRightRadius: theme.borderRadius.xl,
-    borderWidth: 4,
+    borderWidth: theme.borderWidth.thick,
     borderBottomWidth: 0,
     borderColor: theme.colors.text,
     padding: theme.spacing.xl,
@@ -259,12 +291,12 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    letterSpacing: 2,
+    letterSpacing: theme.typography.letterSpacing.normal,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: theme.sizes.buttonSm,
+    height: theme.sizes.buttonSm,
+    borderRadius: theme.sizes.buttonSm / 2,
     backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
@@ -276,7 +308,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textTertiary,
-    letterSpacing: 1,
+    letterSpacing: theme.typography.letterSpacing.tight,
     marginBottom: theme.spacing.md,
   },
   menuItem: {
@@ -284,13 +316,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.md,
     marginBottom: theme.spacing.sm,
   },
   menuItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: theme.sizes.buttonMd,
+    height: theme.sizes.buttonMd,
+    borderRadius: theme.sizes.buttonMd / 2,
     backgroundColor: theme.colors.card,
     justifyContent: 'center',
     alignItems: 'center',
@@ -308,8 +340,89 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textSecondary,
   },
+  proCard: {
+    position: 'relative',
+    marginBottom: theme.spacing.sm,
+  },
+  proCardShadow: {
+    position: 'absolute',
+    top: theme.offsets.sm,
+    left: theme.offsets.sm,
+    right: -theme.offsets.sm,
+    bottom: -theme.offsets.sm,
+    backgroundColor: theme.colors.text,
+    borderRadius: theme.borderRadius.xl,
+  },
+  proCardInner: {
+    backgroundColor: theme.colors.pro,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: theme.borderWidth.thick,
+    borderColor: theme.colors.text,
+    padding: theme.spacing.lg,
+  },
+  proCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  proIconCircle: {
+    width: theme.sizes.buttonXl,
+    height: theme.sizes.buttonXl,
+    borderRadius: theme.sizes.buttonXl / 2,
+    backgroundColor: theme.colors.overlayLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: theme.borderWidth.base,
+    borderColor: theme.colors.text,
+  },
+  proBadgeLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.text,
+    paddingHorizontal: theme.spacing.md - theme.spacing.xs,
+    paddingVertical: theme.spacing.xs + theme.spacing.xxs,
+    borderRadius: theme.borderRadius.full,
+  },
+  proBadgeLargeText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.pro,
+    letterSpacing: theme.typography.letterSpacing.tight,
+  },
+  proCardTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    letterSpacing: theme.typography.letterSpacing.tight,
+    marginBottom: theme.spacing.xs,
+  },
+  proCardSubtitle: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+  },
+  proCardCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.whiteTranslucent,
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: theme.borderWidth.base,
+    borderColor: theme.colors.text,
+  },
+  proCardCtaText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    letterSpacing: theme.typography.letterSpacing.tight,
+  },
   emoji: {
-    fontSize: 80,
+    fontSize: theme.typography.fontSize['7xl'],
     marginBottom: theme.spacing.md,
   },
   title: {
@@ -317,14 +430,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
     textAlign: 'center',
-    letterSpacing: 2,
+    letterSpacing: theme.typography.letterSpacing.normal,
     marginBottom: theme.spacing.sm,
   },
   subtitle: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: theme.typography.lineHeight.sm,
     marginBottom: theme.spacing.xl,
   },
   progressContainer: {
@@ -333,11 +446,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
   },
   progressDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: theme.sizes.progressDot,
+    height: theme.sizes.progressDot,
+    borderRadius: theme.borderRadius.xs,
     backgroundColor: theme.colors.surface,
-    borderWidth: 2,
+    borderWidth: theme.borderWidth.base,
     borderColor: theme.colors.text,
   },
   progressDotActive: {
@@ -346,8 +459,8 @@ const styles = StyleSheet.create({
   actionButton: {
     width: '100%',
     paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 4,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: theme.borderWidth.thick,
     borderColor: theme.colors.text,
     alignItems: 'center',
     ...theme.shadows.md,
@@ -355,8 +468,8 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
-    color: '#fff',
-    letterSpacing: 1,
+    color: theme.colors.white,
+    letterSpacing: theme.typography.letterSpacing.tight,
   },
   nevermindButton: {
     paddingVertical: theme.spacing.md,
