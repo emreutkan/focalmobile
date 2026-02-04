@@ -522,8 +522,6 @@ export default function HomeScreen() {
 
 }   
 
-// Notes:
-// SafeAreaView 
 
 const styles = StyleSheet.create({
     container: {
