@@ -11,7 +11,7 @@ import { analyzeImageWithGroq } from "@/src/services/groqService";
 import { useModel } from "@/src/contexts/ModelContext";
 import { usePro } from "@/src/contexts/ProContext";
 
-export default function ImageAnalyzerScreen() {
+  export default function ImageAnalyzer() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();

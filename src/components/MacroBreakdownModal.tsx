@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -51,6 +51,8 @@ export default function MacroBreakdownModal({
   progressColor,
 }: MacroBreakdownModalProps) {
   const translateY = useSharedValue(SCREEN_HEIGHT);
+  const blurIntensity = useSharedValue(50);
+
 
   React.useEffect(() => {
     if (visible) {
@@ -61,12 +63,23 @@ export default function MacroBreakdownModal({
         velocity: 0,
         overshootClamping: true,
       });
+      blurIntensity.value = withTiming(0.5, { duration: 300 });
     } else {
       translateY.value = withTiming(SCREEN_HEIGHT, {
         duration: 1,
       });
+      blurIntensity.value = withTiming(0, { duration: 500 });
+
     }
+
   }, [visible]);
+
+  const overlayStyle = useAnimatedStyle(() => {
+    return {
+      // Reanimated handles string interpolation on the UI thread automatically
+      backgroundColor: `rgba(0, 0, 0, ${blurIntensity.value})`, 
+    };
+  });
 
   const modalStyle = useAnimatedStyle(() => {
     return {
@@ -87,7 +100,10 @@ export default function MacroBreakdownModal({
         activeOpacity={1}
         onPress={onClose}
       >
-        <BlurView style={styles.blurOverlay} />
+<Animated.View 
+        style={[styles.blurOverlay, overlayStyle]} 
+      />
+         
         <Animated.View style={[styles.modalContainer, modalStyle]}>
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
             {/* Header */}
@@ -149,15 +165,16 @@ const styles = StyleSheet.create({
   },
   blurOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+
   },
   modalContainer: {
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: theme.borderRadius.xl,
     borderTopRightRadius: theme.borderRadius.xl,
-    borderTopWidth: 4,
     borderColor: theme.colors.text,
     maxHeight: SCREEN_HEIGHT * 0.8,
+    minHeight: SCREEN_HEIGHT * 0.4,
+
   },
   header: {
     paddingHorizontal: theme.spacing.lg,
