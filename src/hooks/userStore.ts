@@ -1,50 +1,34 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
-import { User } from "@supabase/supabase-js";
-
+import { persist, createJSONStorage } from "zustand/middleware";
 interface UserStore {
-  // Auth state
-  authUser: User | null;
-  isAuthenticated: boolean;
+  isPro: boolean;
   isAuthLoading: boolean;
-
-  // User preferences
-  user: {
-    isPro: boolean;
-  };
-
-  // Actions
-  setAuthUser: (user: User | null) => void;
-  setAuthLoading: (loading: boolean) => void;
-  setUser: (user: UserStore["user"]) => void;
-  signOut: () => void;
+  hasSeenOnboarding: boolean;
+  isAuthenticated: boolean;
+  setIsPro: (isPro: boolean) => void;
+  setIsAuthLoading: (isAuthLoading: boolean) => void;
+  setHasSeenOnboarding: (hasSeenOnboarding: boolean) => void;
+  setIsAuthenticated: (isAuthenticated: boolean) => void;  
 }
 
-export const useUserStore = create<UserStore>((set) => ({
-  // Auth state
-  authUser: null,
-  isAuthenticated: false,
-  isAuthLoading: true,
-
-  // User preferences
-  user: {
+export const useUserStore = create(
+  persist<UserStore>(
+    (set) => ({
+    // now these are the left side section of useState
     isPro: false,
-  },
-
-  // Actions
-  setAuthUser: (authUser) =>
-    set({
-      authUser,
-      isAuthenticated: !!authUser,
-    }),
-
-  setAuthLoading: (isAuthLoading) => set({ isAuthLoading }),
-
-  setUser: (user) => set({ user }),
-
-  signOut: () =>
-    set({
-      authUser: null,
-      isAuthenticated: false,
-      user: { isPro: false },
-    }),
-}));
+    isAuthLoading: true,
+    hasSeenOnboarding: false,
+    isAuthenticated: false,
+    // and thse are the right side setters 
+    setIsPro: (isPro) => set({ isPro }),
+    setIsAuthLoading: (isAuthLoading) => set({ isAuthLoading }),
+    setHasSeenOnboarding: (hasSeenOnboarding) => set({ hasSeenOnboarding }),
+    setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+  }),
+  {
+    name: "user-store",
+    storage: createJSONStorage(() => AsyncStorage),
+  }
+    ),
+  );
