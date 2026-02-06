@@ -103,7 +103,6 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
   return (
   
     <Modal
-    visible={true}
     transparent={true}
     animationType="fade"
     onRequestClose={() => setShowMediaSelection(false)}

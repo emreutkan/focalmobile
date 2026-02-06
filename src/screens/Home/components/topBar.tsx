@@ -1,12 +1,10 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { theme } from "@/src/theme";
 
-interface TopBarProps {
-  onSettingsPress?: () => void;
-}
-
-export default function TopBar({ onSettingsPress }: TopBarProps) {
+export default function TopBar() {
+  const router = useRouter();
   const today = new Date();
   const month = today.toLocaleDateString('en-US', { month: 'long' });
   const dayOfMonth = today.getDate().toString().slice(0, 2);
@@ -20,7 +18,7 @@ export default function TopBar({ onSettingsPress }: TopBarProps) {
         <Text style={styles.date}>{month} {dayOfMonth}</Text>
         <TouchableOpacity
           style={styles.settingsButton}
-          onPress={onSettingsPress}
+          onPress={() => router.push('/settings')}
           activeOpacity={0.7}
         >
           <Ionicons name="settings-outline" size={24} color={theme.colors.text} />

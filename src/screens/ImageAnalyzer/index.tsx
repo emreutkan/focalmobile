@@ -234,6 +234,14 @@ import { useUserStore } from "@/src/hooks/userStore";
       ? "DOWNLOAD MODEL FIRST"
       : "ANALYZE";
 
+      console.log('imageUri:', imageUri);
+      console.log('isPro:', isPro);
+      console.log('isModelDownloaded:', isModelDownloaded);
+      console.log('isModelReady:', isModelReady);
+      console.log('canAnalyze:', canAnalyze);
+      console.log('buttonLabel:', buttonLabel);
+      console.log('analyzing:', analyzing);
+      console.log('status:', status);
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>

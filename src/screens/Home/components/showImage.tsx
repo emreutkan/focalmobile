@@ -1,4 +1,4 @@
-import { View, Image, Modal, TouchableOpacity } from "react-native";
+import { View, Image, TouchableOpacity } from "react-native";
 import { Text } from "react-native";
 import { theme } from "@/src/theme";
 import { StyleSheet } from "react-native";
@@ -11,48 +11,50 @@ interface ShowImageProps {
   handleCancel: () => void;
   handleGoodToGo: () => void;
 }
-export function ShowImage({ selectedImage, setShowImageModal, handleCancel, handleGoodToGo   }: ShowImageProps) {
+export function ShowImage({ selectedImage, setShowImageModal, handleCancel, handleGoodToGo }: ShowImageProps) {
   console.log('ShowImage rendered, selectedImage:', selectedImage);
   return (
-    <Modal
-    visible={true}
-    transparent={true}
-    animationType="fade"
-    onRequestClose={() => setShowImageModal(false)}
-  >
-    <View style={styles.modalContainer}>
-      <View style={styles.modalContent}>
-        {selectedImage && (
-          <Image
-            source={{ uri: selectedImage }}
-            style={styles.previewImage}
-          />
-        )}
-        <Text style={styles.modalQuestion}>READY TO ANALYZE?</Text>
-        <View style={styles.modalButtons}>
-          <TouchableOpacity
-            style={[styles.modalButton, styles.cancelButton]}
-            onPress={handleCancel}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.cancelButtonText}>RETAKE</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modalButton, styles.confirmButton]}
-            onPress={handleGoodToGo}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.confirmButtonText}>LET'S GO!</Text>
-          </TouchableOpacity>
+    <View style={styles.overlay}>
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.previewImage}
+            />
+          )}
+          <Text style={styles.modalQuestion}>READY TO ANALYZE?</Text>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={handleCancel}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cancelButtonText}>RETAKE</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButton]}
+              onPress={handleGoodToGo}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.confirmButtonText}>LET'S GO!</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
-  </Modal>
-
   )
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',

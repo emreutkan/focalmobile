@@ -1,10 +1,9 @@
 import React, { useCallback, useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Modal, TouchableOpacity, Linking } from "react-native";
+import { View, Text, StyleSheet, RefreshControl, Alert, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { theme } from "@/src/theme";
-import { Image } from "expo-image";
 import TopBar from "./components/topBar";
 import MiddleSection from "./components/middleSection";
 import MealsSection from "./components/mealsSection";
@@ -37,7 +36,6 @@ export default function HomeScreen() {
     const [modalVisible, setModalVisible] = useState(false);
     const [modalType, setModalType] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories');
     const [breakdownData, setBreakdownData] = useState<Array<{ name: string; value: number; time: string }>>([]);
-    const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
     const [galleryPermission, setGalleryPermission] = useState<boolean | null>(null);
     const [showPermissionModal, setShowPermissionModal] = useState(false);
@@ -179,15 +177,6 @@ export default function HomeScreen() {
           <Stack.Screen options={{title: "Home", headerShown: false}} />
             <StatusBar style="dark" />  
               <View style={styles.container} >
-                {__DEV__ && (
-                  <TouchableOpacity
-                    style={styles.devButton}
-                    onPress={() => router.push("/dev")}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.devButtonText}>DEV</Text>
-                  </TouchableOpacity>
-                )}
                 <Animated.ScrollView
                   scrollEventThrottle={16}
                   contentContainerStyle={{
@@ -200,7 +189,7 @@ export default function HomeScreen() {
                   }
 
                 >
-                  <TopBar onSettingsPress={() => setShowSettingsModal(true)} />
+                  <TopBar />
                   <MiddleSection 
                     calories={dailyTotals.total_calories}
                     protein={dailyTotals.total_protein}
@@ -231,14 +220,14 @@ export default function HomeScreen() {
 
                 {showPermissionModal && <MediaPermission showPermissionModal={showPermissionModal} setShowPermissionModal={setShowPermissionModal} permissionType={permissionType} />}
 
-                {showMediaSelection && 
-                <MediaSelection 
-                setSelectedImage={setSelectedImage} 
-                cameraPermission={cameraPermission} 
-                galleryPermission={galleryPermission} 
-                setCameraPermission={setCameraPermission} 
-                setGalleryPermission={setGalleryPermission} 
-                setShowPermissionModal={setShowPermissionModal} 
+                {showMediaSelection &&
+                <MediaSelection
+                setSelectedImage={setSelectedImage}
+                cameraPermission={cameraPermission}
+                galleryPermission={galleryPermission}
+                setCameraPermission={setCameraPermission}
+                setGalleryPermission={setGalleryPermission}
+                setShowPermissionModal={setShowPermissionModal}
                 setShowMediaSelection={setShowMediaSelection}
                 />}
 
@@ -279,14 +268,8 @@ export default function HomeScreen() {
                     theme.card.fatCard
                   }
                 />
-{/* 
-                <SettingsModal
-                  visible={showSettingsModal}
-                  onClose={() => setShowSettingsModal(false)}
-                  onDataDeleted={loadData}
-                /> */}
+                {showImageModal && <ShowImage selectedImage={selectedImage} setShowImageModal={setShowImageModal} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} />}
             </View>
-            {showImageModal && <ShowImage selectedImage={selectedImage} setShowImageModal={setShowImageModal} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} />}
         </>
     )
 
@@ -312,25 +295,6 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       zIndex: 40,
     },
-    devButton: {
-      position: 'absolute',
-      top: theme.spacing.xl,
-      right: theme.spacing.lg,
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.borderRadius.full,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-      borderWidth: 2,
-      borderColor: theme.colors.text,
-      zIndex: 60,
-      ...theme.shadows.sm,
-    },
-    devButtonText: {
-      fontSize: theme.typography.fontSize.sm,
-      fontWeight: theme.typography.fontWeight.bold,
-      color: theme.colors.text,
-      letterSpacing: 1,
-    },
     scanButtonContent: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -344,10 +308,4 @@ const styles = StyleSheet.create({
       textTransform: 'uppercase',
       letterSpacing: 1,
     },
-    
-   
- 
-
-
-
 })  

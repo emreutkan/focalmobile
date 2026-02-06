@@ -24,6 +24,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { theme } from '@/src/theme';
 import * as Haptics from 'expo-haptics';
+import { useUserStore } from '@/src/hooks/userStore';
+import PremiumCelebration from '@/src/components/PremiumCelebration';
 
 const { width, height } = Dimensions.get('window');
 
@@ -246,6 +248,8 @@ function PricingCard({
 
 export default function ProScreen() {
   const router = useRouter();
+  const setIsPro = useUserStore((state) => state.setIsPro);
+  const [showCelebration, setShowCelebration] = React.useState(false);
   const pulseAnim = useSharedValue(1);
   const glowAnim = useSharedValue(0);
 
@@ -275,13 +279,23 @@ export default function ProScreen() {
 
   const handleSubscribe = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    console.log('Subscribe to Pro');
+    setIsPro(true);
+    setShowCelebration(true);
   };
 
   const handleRestore = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    console.log('Restore purchases');
+    setIsPro(true);
+    setShowCelebration(true);
   };
+
+  const handleCelebrationComplete = () => {
+    router.back();
+  };
+
+  if (showCelebration) {
+    return <PremiumCelebration onComplete={handleCelebrationComplete} />;
+  }
 
   return (
     <View style={styles.container}>

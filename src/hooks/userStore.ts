@@ -16,7 +16,7 @@ export const useUserStore = create(
   persist<UserStore>(
     (set) => ({
     // now these are the left side section of useState
-    isPro: false,
+    isPro: true,
     isAuthLoading: true,
     hasSeenOnboarding: false,
     isAuthenticated: false,
