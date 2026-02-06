@@ -9,13 +9,12 @@ import LoadingScreen from "@/src/components/LoadingScreen";
 import { identifyFoodFromImage } from "@/src/utils/foodIdentifier";
 import { analyzeImageWithGroq } from "@/src/services/groqService";
 import { useModel } from "@/src/contexts/ModelContext";
-import { usePro } from "@/src/contexts/ProContext";
-
+import { useUserStore } from "@/src/hooks/userStore";
   export default function ImageAnalyzer() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isPro } = usePro();
+  const isPro = useUserStore((state) => state.isPro);
   const {
     isModelDownloaded,
     isModelReady,
