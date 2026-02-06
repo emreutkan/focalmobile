@@ -1,6 +1,5 @@
-import React from "react";
-import ImageAnalyzerScreen from "@/src/screens/ImageAnalyzer";
+import ImageAnalyzer from "@/src/screens/ImageAnalyzer/index";
 
-export default function ImageAnalyzer() {
-  return <ImageAnalyzerScreen />;
+export default function ImageAnalyzerScreen() {
+  return <ImageAnalyzer />;
 }

@@ -1,17 +1,27 @@
 import { Stack } from "expo-router";
-import { theme } from "@/src/theme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
-
-
+import { useAuthListener } from "@/src/hooks/useAuthListener";
+import AuthGate from "@/src/components/AuthGate";
+import { ModelProvider } from "@/src/contexts/ModelContext";
 
 export default function RootLayout() {
+  useAuthListener();
+
   return (
     <SafeAreaProvider>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="imageAnalyzer" options={{ headerShown: false }} />
-      </Stack>
+      <ModelProvider>
+        <AuthGate>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="auth" />
+            <Stack.Screen name="imageAnalyzer" />
+            <Stack.Screen name="pro" />
+            <Stack.Screen name="dev" />
+            <Stack.Screen name="settings" />
+          </Stack>
+        </AuthGate>
+      </ModelProvider>
     </SafeAreaProvider>
   );
 }

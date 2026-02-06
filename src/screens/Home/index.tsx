@@ -1,19 +1,23 @@
-import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Modal, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useCallback, useState, useEffect } from "react";
+import { View, Text, StyleSheet, RefreshControl, Alert, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import * as Haptics from "expo-haptics";    
+import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
 import { theme } from "@/src/theme";
-import { GlassView } from "expo-glass-effect";
-import { Image } from "expo-image";
 import TopBar from "./components/topBar";
 import MiddleSection from "./components/middleSection";
+import MealsSection from "./components/mealsSection";
+import MacroBreakdownModal from "@/src/components/MacroBreakdownModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";  // ✅
+import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 import CardComponent from "@/src/components/Cards/cardComponent";
 import { Dimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { initDatabase, getDailyTotals, getTodaysMeals, getMacroBreakdown, deleteMeal, getMealById } from "@/src/utils/database";
+import { MediaSelection } from "./components/mediaSelection";
 import * as ImagePicker from "expo-image-picker";
+import { MediaPermission } from "./components/mediaPermission";
+import { ShowImage } from "./components/showImage";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -27,83 +31,115 @@ export default function HomeScreen() {
     const [refreshing,setRefreshing] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [showImageModal, setShowImageModal] = useState(false);
-    
+    const [dailyTotals, setDailyTotals] = useState({ total_calories: 0, total_protein: 0, total_carbs: 0, total_fat: 0 });
+    const [meals, setMeals] = useState<any[]>([]);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalType, setModalType] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories');
+    const [breakdownData, setBreakdownData] = useState<Array<{ name: string; value: number; time: string }>>([]);
+    const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
+    const [galleryPermission, setGalleryPermission] = useState<boolean | null>(null);
+    const [showPermissionModal, setShowPermissionModal] = useState(false);
+    const [showMediaSelection, setShowMediaSelection] = useState(false);
+    const [permissionType, setPermissionType] = useState<'camera' | 'gallery' | 'both' | 'none'>('both');
+    const checkPermissions = async () => {
+      const [cameraStatus, galleryStatus] = await Promise.all([
+          ImagePicker.getCameraPermissionsAsync(),
+          ImagePicker.getMediaLibraryPermissionsAsync(),
+        ]);
+        const hasCamera = cameraStatus.granted;
+        const hasGallery = galleryStatus.granted;
+  
+        setCameraPermission(hasCamera);
+        setGalleryPermission(hasGallery);
+        if (!hasCamera && !hasGallery) {
+          setShowPermissionModal(true);
+          setPermissionType('none');
+        }
+      };
+
+
+    useEffect(() => {
+
+      checkPermissions();
+    }, []);
+
+
+    const loadData = useCallback(async () => {
+      try {
+        await initDatabase();
+        const totals = await getDailyTotals();
+        setDailyTotals(totals);
+        
+        const todaysMeals = await getTodaysMeals();
+        const mealsWithItems = await Promise.all(
+          todaysMeals.map(async (meal) => {
+            const fullMeal = await getMealById(meal.id);
+            return fullMeal;
+          })
+        );
+        setMeals(mealsWithItems.filter(Boolean));
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    }, []);
+
+    useEffect(() => {
+      loadData();
+    }, [loadData]);
+
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        // Haptic Feedback on pull to refresh
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-        // Simulate a refresh operation
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        await loadData();
         setRefreshing(false);
-    }, [])
+    }, [loadData]);
+
+    const handleCardPress = useCallback(async (type: 'calories' | 'protein' | 'carbs' | 'fat') => {
+      try {
+        const breakdown = await getMacroBreakdown(type);
+        setBreakdownData(breakdown);
+        setModalType(type);
+        setModalVisible(true);
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (error) {
+        console.error('Error loading breakdown:', error);
+      }
+    }, []);
+
+    const handleDeleteMeal = useCallback(async (mealId: number) => {
+      Alert.alert(
+        'Delete Meal',
+        'Are you sure you want to delete this meal?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteMeal(mealId);
+                await loadData();
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              } catch (error) {
+                console.error('Error deleting meal:', error);
+                Alert.alert('Error', 'Failed to delete meal');
+              }
+            },
+          },
+        ]
+      );
+    }, [loadData]);
 
     const {top, bottom} = useSafeAreaInsets();
     const { width } = Dimensions.get("window");
-    const FLOATING_CARD_WIDTH = width - theme.spacing.md * 2;
+    const FLOATING_CARD_WIDTH = Math.min(400, width - theme.spacing.xl * 2);
     
     const handleScanFood = useCallback(async () => {
-      try {
-        // Request camera permission
-        const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-        
-        if (!cameraPermission.granted) {
-          Alert.alert(
-            'Camera Permission Required',
-            'Please enable camera access in settings to scan food.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        // Show action sheet to choose camera or gallery
-        Alert.alert(
-          'Select Image',
-          'Choose an option',
-          [
-            {
-              text: 'Camera',
-              onPress: async () => {
-                const result = await ImagePicker.launchCameraAsync({
-                  mediaTypes: ['images'],
-                  allowsEditing: true,
-                  aspect: [4, 3],
-                  quality: 1,
-                });
+  
 
-                if (!result.canceled && result.assets[0]) {
-                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setSelectedImage(result.assets[0].uri);
-                  setShowImageModal(true);
-                }
-              },
-            },
-            {
-              text: 'Gallery',
-              onPress: async () => {
-                const result = await ImagePicker.launchImageLibraryAsync({
-                  mediaTypes: ['images'],
-                  allowsEditing: true,
-                  aspect: [4, 3],
-                  quality: 1,
-                });
-
-                if (!result.canceled && result.assets[0]) {
-                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setSelectedImage(result.assets[0].uri);
-                  setShowImageModal(true);
-                }
-              },
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-          ]
-        );
-      } catch (error) {
-        console.error('Error selecting image:', error);
-        Alert.alert('Error', 'Failed to select image.');
-      }
+      setShowMediaSelection(true);
     }, []);
 
     const handleGoodToGo = useCallback(() => {
@@ -121,6 +157,20 @@ export default function HomeScreen() {
       setShowImageModal(false);
       setSelectedImage(null);
     }, []);
+
+    useEffect(() => {
+      if (selectedImage) {
+        console.log('selectedImage set:', selectedImage);
+        console.log('Setting showImageModal to true');
+        setShowMediaSelection(false);
+        setShowPermissionModal(false);
+        setShowImageModal(true);
+      }
+    }, [selectedImage]);
+
+    useEffect(() => {
+      console.log('showImageModal changed:', showImageModal);
+    }, [showImageModal]);
     
     return (
         <>
@@ -139,63 +189,92 @@ export default function HomeScreen() {
                   }
 
                 >
-                  <TopBar scrollY={scrollY} />
-                  <MiddleSection scrollY={scrollY} />
+                  <TopBar />
+                  <MiddleSection 
+                    calories={dailyTotals.total_calories}
+                    protein={dailyTotals.total_protein}
+                    carbs={dailyTotals.total_carbs}
+                    fat={dailyTotals.total_fat}
+                    onCaloriesPress={() => handleCardPress('calories')}
+                    onProteinPress={() => handleCardPress('protein')}
+                    onCarbsPress={() => handleCardPress('carbs')}
+                    onFatPress={() => handleCardPress('fat')}
+                  />
+                  <MealsSection meals={meals} onDeleteMeal={handleDeleteMeal} />
                 </Animated.ScrollView>
                 
-                <View style={[styles.floatingCardContainer, { bottom: bottom + theme.spacing.md }]}>
+                <View style={[styles.floatingButtonContainer, { bottom: bottom + theme.spacing.xl }]}>
                   <CardComponent
-                    height={60}
+                    height={64}
                     width={FLOATING_CARD_WIDTH}
-                    backgroundColor={theme.card.dailySummary}
+                    backgroundColor="#FFE66D"
                     onPress={handleScanFood}
+                    showShadow={true}
                   >
-                    <Text style={styles.scanText}>[ ] scan food</Text>
+                    <View style={styles.scanButtonContent}>
+                      <Ionicons name="scan" size={32} color={theme.colors.text} />
+                      <Text style={styles.scanButtonText}>SCAN FOOD</Text>
+                    </View>
                   </CardComponent>
                 </View>
 
-                <Modal
-                  visible={showImageModal}
-                  transparent={true}
-                  animationType="fade"
-                  onRequestClose={handleCancel}
-                >
-                  <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                      {selectedImage && (
-                        <Image
-                          source={{ uri: selectedImage }}
-                          style={styles.previewImage}
-                          contentFit="contain"
-                        />
-                      )}
-                      <Text style={styles.modalQuestion}>Good to go?</Text>
-                      <View style={styles.modalButtons}>
-                        <TouchableOpacity
-                          style={[styles.modalButton, styles.cancelButton]}
-                          onPress={handleCancel}
-                        >
-                          <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.modalButton, styles.confirmButton]}
-                          onPress={handleGoodToGo}
-                        >
-                          <Text style={styles.confirmButtonText}>Yes</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                </Modal>
+                {showPermissionModal && <MediaPermission showPermissionModal={showPermissionModal} setShowPermissionModal={setShowPermissionModal} permissionType={permissionType} />}
+
+                {showMediaSelection &&
+                <MediaSelection
+                setSelectedImage={setSelectedImage}
+                cameraPermission={cameraPermission}
+                galleryPermission={galleryPermission}
+                setCameraPermission={setCameraPermission}
+                setGalleryPermission={setGalleryPermission}
+                setShowPermissionModal={setShowPermissionModal}
+                setShowMediaSelection={setShowMediaSelection}
+                />}
+
+
+                <MacroBreakdownModal
+                  visible={modalVisible}
+                  onClose={() => setModalVisible(false)}
+                  title={
+                    modalType === 'calories' ? 'CALORIES BREAKDOWN' :
+                    modalType === 'protein' ? 'PROTEIN BREAKDOWN' :
+                    modalType === 'carbs' ? 'CARBS BREAKDOWN' :
+                    'FAT BREAKDOWN'
+                  }
+                  total={
+                    modalType === 'calories' ? dailyTotals.total_calories :
+                    modalType === 'protein' ? dailyTotals.total_protein :
+                    modalType === 'carbs' ? dailyTotals.total_carbs :
+                    dailyTotals.total_fat
+                  }
+                  unit={modalType === 'calories' ? 'kcal' : 'g'}
+                  items={breakdownData}
+                  headerColor={
+                    modalType === 'calories' ? theme.card.dailySummary :
+                    modalType === 'protein' ? theme.card.proteinCard :
+                    modalType === 'carbs' ? theme.card.carbCard :
+                    theme.card.fatCard
+                  }
+                  circleColor={
+                    modalType === 'calories' ? theme.card.dailySummary :
+                    modalType === 'protein' ? theme.card.proteinCard :
+                    modalType === 'carbs' ? theme.card.carbCard :
+                    theme.card.fatCard
+                  }
+                  progressColor={
+                    modalType === 'calories' ? theme.card.dailySummary :
+                    modalType === 'protein' ? theme.card.proteinCard :
+                    modalType === 'carbs' ? theme.card.carbCard :
+                    theme.card.fatCard
+                  }
+                />
+                {showImageModal && <ShowImage selectedImage={selectedImage} setShowImageModal={setShowImageModal} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} />}
             </View>
-            
         </>
     )
 
 }   
 
-// Notes:
-// SafeAreaView 
 
 const styles = StyleSheet.create({
     container: {
@@ -209,71 +288,24 @@ const styles = StyleSheet.create({
       width: '100%',
       height: '100%',
     },
-    floatingCardContainer: {
+    floatingButtonContainer: {
       position: 'absolute',
-      left: theme.spacing.md,
-      right: theme.spacing.md,
+      left: 0,
+      right: 0,
       alignItems: 'center',
+      zIndex: 40,
     },
-    scanText: {
-      fontSize: theme.typography.fontSize.lg,
-      fontWeight: theme.typography.fontWeight.semibold,
-      color: theme.colors.text,
-      textAlign: 'center',
-    },
-    modalContainer: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: theme.spacing.md,
-    },
-    modalContent: {
-      backgroundColor: theme.colors.card,
-      borderRadius: theme.borderRadius.xl,
-      padding: theme.spacing.lg,
-      width: '100%',
-      maxWidth: 400,
-      alignItems: 'center',
-    },
-    previewImage: {
-      width: '100%',
-      height: 300,
-      borderRadius: theme.borderRadius.lg,
-      marginBottom: theme.spacing.md,
-    },
-    modalQuestion: {
-      fontSize: theme.typography.fontSize.xl,
-      fontWeight: theme.typography.fontWeight.semibold,
-      color: theme.colors.text,
-      marginBottom: theme.spacing.lg,
-    },
-    modalButtons: {
+    scanButtonContent: {
       flexDirection: 'row',
-      gap: theme.spacing.md,
-      width: '100%',
-    },
-    modalButton: {
-      flex: 1,
-      paddingVertical: theme.spacing.md,
-      borderRadius: theme.borderRadius.md,
       alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.md,
     },
-    cancelButton: {
-      backgroundColor: theme.colors.surface,
-    },
-    confirmButton: {
-      backgroundColor: theme.colors.primary,
-    },
-    cancelButtonText: {
-      fontSize: theme.typography.fontSize.base,
-      fontWeight: theme.typography.fontWeight.semibold,
+    scanButtonText: {
+      fontSize: theme.typography.fontSize.xl,
+      fontWeight: theme.typography.fontWeight.bold,
       color: theme.colors.text,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
     },
-    confirmButtonText: {
-      fontSize: theme.typography.fontSize.base,
-      fontWeight: theme.typography.fontWeight.semibold,
-      color: '#FFFFFF',
-    },
- 
 })  
