@@ -19,6 +19,7 @@ export default function RootLayout() {
             <Stack.Screen name="pro" />
             <Stack.Screen name="dev" />
             <Stack.Screen name="settings" />
+            <Stack.Screen name="foodReview" />
           </Stack>
         </AuthGate>
       </ModelProvider>

@@ -114,17 +114,19 @@ import { useUserStore } from "@/src/hooks/userStore";
 
       const result = await analyzeImageWithGroq(imageFilePath);
 
+      console.log('Groq result:', result);
       if (!result.isFood || result.items.length === 0) {
         throw new Error(result.message || "No food detected in this image. Please take a photo of food.");
       }
 
-      // router.push({
-      //   pathname: "/foodReview",
-      //   params: {
-      //     items: encodeURIComponent(JSON.stringify(result.items)),
-      //     mealName: encodeURIComponent(result.mealName || ''),
-      //   },
-      // });
+      
+      router.push({
+        pathname: "/foodReview",
+        params: {
+          items: encodeURIComponent(JSON.stringify(result.items)),
+          mealName: encodeURIComponent(result.mealName || ''),
+        },
+      });
     } catch (error: any) {
       console.error('Error analyzing with Groq:', error);
       setError(error.message || "Failed to analyze image");

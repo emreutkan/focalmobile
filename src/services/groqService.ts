@@ -60,20 +60,37 @@ export async function analyzeImageWithGroq(
     const mimeType = getImageMimeType(imageFilePath);
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
 
-    const prompt = `Look at this food image. Identify the dish and break down EVERY component.
+    const prompt = `Look at this food image and identify ONLY the edible food items.
 
-RULES:
-1. Name the dish specifically (Turkish, Indian, Italian, etc.)
-2. List EACH visible component separately with weight in grams
-3. Estimate realistic portions based on plate size
-4. Be accurate with your gram estimations
-
-JSON format:
-{"isFood":true,"mealName":"Dish Name","items":[{"name":"item name","quantity":"1 piece","estimatedGrams":100}]}
-
-If no food visible: {"isFood":false,"items":[],"message":"No food detected in image"}
-
-Analyze the image and respond with ONLY valid JSON, no other text:`;
+    RULES:
+    1. Name the dish specifically (Turkish, Indian, Italian, etc.)
+    2. List ONLY edible food components - ignore plates, utensils, napkins, etc.
+    3. Break down each distinct food item separately with weight in grams
+    4. Estimate realistic portions based on visual context
+    5. Be accurate with gram estimations
+    
+    JSON format:
+    {
+      "isFood": true,
+      "mealName": "Dish Name",
+      "items": [
+        {
+          "name": "item name",
+          "quantity": "1 piece",
+          "estimatedGrams": 100
+        }
+      ]
+    }
+    
+    If no food visible:
+    {
+      "isFood": false,
+      "items": [],
+      "message": "No food detected in image"
+    }
+    
+    Analyze the image and respond with ONLY valid JSON, no other text:`;
+    
 
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
@@ -82,7 +99,7 @@ Analyze the image and respond with ONLY valid JSON, no other text:`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.2-90b-vision-preview',
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
         messages: [
           {
             role: 'user',
@@ -100,8 +117,10 @@ Analyze the image and respond with ONLY valid JSON, no other text:`;
             ],
           },
         ],
-        temperature: 0.2,
-        max_tokens: 1024,
+        temperature: 0.6,
+        max_completion_tokens: 4096,
+        top_p: 0.95,
+        stream: false,
       }),
     });
 
