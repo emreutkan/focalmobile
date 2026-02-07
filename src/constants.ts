@@ -244,42 +244,41 @@ export const GROQ_FOOD_ANALYSIS_PROMPT = `Look at this food image and identify O
     
     Analyze the image and respond with ONLY valid JSON, no other text:`;
 
-export const GROQ_NUTRITION_CALCULATION_PROMPT = `You are a professional nutritionist. Calculate detailed nutrition for the given meal items.
+export const GROQ_NUTRITION_CALCULATION_PROMPT = `You are a nutrition calculator. Calculate macros and micros for the given meal.
 
-RULES:
-1. Calculate realistic macronutrient values based on the gram weights provided
-2. Use standard nutritional references (USDA database values)
-3. Protein: ~4 cal/g, Carbs: ~4 cal/g, Fat: ~9 cal/g
-4. Identify ALL micronutrients (vitamins, minerals, beneficial compounds) present in significant amounts
-5. Flag any bad/processed ingredients (seed oils, artificial sweeteners, preservatives, food dyes, trans fats, MSG)
-6. Highlight good/healthy ingredients (healthy fats, whole grains, lean proteins, vegetables, fruits, fermented foods)
-7. Provide a healthScore from 0-100 (higher = healthier) with brief reasoning
+MACRO CALCULATION:
+- Food is NOT pure macronutrient. Always account for water content and real composition.
+- Use your knowledge of real nutritional composition per 100g of each food, then scale by the given weight.
+- Cross-check: calories must ≈ (protein*4)+(carbs*4)+(fat*9). If it doesn't add up, recalculate.
 
-MICRONUTRIENTS to check for: vitamin_a, vitamin_b1_thiamine, vitamin_b2_riboflavin, vitamin_b3_niacin, vitamin_b5_pantothenic, vitamin_b6, vitamin_b7_biotin, vitamin_b9_folate, vitamin_b12, vitamin_c, vitamin_d, vitamin_e, vitamin_k, choline, beta_carotene, lycopene, calcium, iron, magnesium, phosphorus, potassium, zinc, copper, manganese, selenium, chromium, molybdenum, iodine, omega_3, omega_6, lutein, zeaxanthin, flavonoids, polyphenols
+HEALTH SCORE (0-100) - SCORING PHILOSOPHY:
+Score based on how NATURAL and UNPROCESSED the food is. This is the ONLY criteria.
 
-BAD INGREDIENTS to flag if likely present: soybean_oil, canola_oil, corn_oil, vegetable_oil, margarine, high_fructose_corn_syrup, aspartame, sucralose, maltodextrin, sodium_nitrate, sodium_nitrite, msg, trans_fat, red_40, yellow_5, natural_flavors, carrageenan
+95-100: Single-ingredient whole foods in their natural state
+80-94: Minimally processed whole foods
+60-79: Moderately processed foods
+30-59: Processed foods with additives
+0-29: Ultra-processed foods
 
-GOOD INGREDIENTS to highlight if present: olive_oil, avocado_oil, grass_fed_butter, nuts, seeds, avocado, wild_caught_fish, legumes, leafy_greens, cruciferous_vegetables, berries, turmeric, ginger, garlic, yogurt, whole_wheat, quinoa, oats
+NUTRITIONAL PRINCIPLES (apply these when scoring and analyzing):
+- Saturated fat and cholesterol from whole foods are NOT negatives. Dietary cholesterol is essential for hormone production (testosterone, vitamin D synthesis). Never penalize whole foods for cholesterol or saturated fat content.
+- Seed oils (soybean, canola, corn, sunflower, safflower, grapeseed, cottonseed, rice bran, vegetable oil, margarine) are highly inflammatory. Any food cooked in or containing seed oils gets a significant score penalty. Flag them as bad ingredients.
+- Omega-3 EPA/DHA are beneficial, BUT if the food also contains seed oils (e.g. deep-fried fish), the omega-6 from seed oils cancels out the omega-3 benefit. Note this in reasoning when applicable. Do not list omega_3 as a micro benefit if the food is cooked in seed oils.
+- Phytic acid: Know which foods contain phytic acid (grains, legumes, nuts, seeds) and how much. Flag phytic_acid as a bad ingredient when present in significant amounts, as it binds minerals (iron, zinc, calcium, magnesium) and reduces their absorption. Note in reasoning which micros are affected.
+- The enemy is PROCESSING and INDUSTRIAL INGREDIENTS, not any naturally occurring macronutrient.
+- Whole animal products, whole vegetables, whole fruits, and minimally processed foods are top tier nutrition.
 
-Respond with ONLY this JSON format (no markdown, no code fences, no extra text):
-{
-  "macros": {
-    "calories": 0,
-    "protein": 0,
-    "carbs": 0,
-    "fat": 0,
-    "fiber": 0,
-    "sugar": 0,
-    "saturatedFat": 0,
-    "sodium": 0,
-    "cholesterol": 0
-  },
-  "micros": ["vitamin_a", "iron"],
-  "healthScore": 75,
-  "reasoning": "Brief explanation of the health score",
-  "badIngredients": [],
-  "goodIngredients": ["lean_protein", "vegetables"]
-}`;
+MICRONUTRIENTS - only list those present in meaningful amounts:
+vitamin_a, vitamin_b1_thiamine, vitamin_b2_riboflavin, vitamin_b3_niacin, vitamin_b5_pantothenic, vitamin_b6, vitamin_b7_biotin, vitamin_b9_folate, vitamin_b12, vitamin_c, vitamin_d, vitamin_e, vitamin_k, choline, beta_carotene, lycopene, calcium, iron, magnesium, phosphorus, potassium, zinc, copper, manganese, selenium, omega_3, omega_6, lutein, zeaxanthin, flavonoids, polyphenols
+
+BAD INGREDIENTS - flag if the food likely contains them:
+soybean_oil, canola_oil, corn_oil, sunflower_oil, safflower_oil, grapeseed_oil, cottonseed_oil, rice_bran_oil, vegetable_oil, margarine, high_fructose_corn_syrup, aspartame, sucralose, maltodextrin, sodium_nitrate, sodium_nitrite, msg, trans_fat, red_40, yellow_5, natural_flavors, carrageenan, phytic_acid
+
+GOOD INGREDIENTS - highlight what is present:
+olive_oil, avocado_oil, grass_fed_butter, ghee, coconut_oil, nuts, seeds, avocado, eggs, red_meat, organ_meats, bone_broth, fermented_foods, leafy_greens, cruciferous_vegetables, berries, turmeric, ginger, garlic, yogurt, kefir, wild_caught_fish
+
+Respond with ONLY valid JSON (no markdown, no code fences, no extra text):
+{"macros":{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"saturatedFat":0,"sodium":0,"cholesterol":0},"micros":[],"healthScore":0,"reasoning":"","badIngredients":[],"goodIngredients":[]}`;
 // Type exports for TypeScript
 export type Macronutrient = typeof MACRONUTRIENTS[number];
 export type Micronutrient = typeof MICRONUTRIENTS[number];
