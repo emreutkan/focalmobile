@@ -1,5 +1,8 @@
-import RNFS from 'react-native-fs';
+
 import { GROQ_API_KEY } from '../config/secrets';
+import { imageToBase64, getImageMimeType } from '../utils/imageUtils';
+import { GROQ_MODEL, GROQ_MODEL_TEMPERATURE, GROQ_MODEL_TOP_P, GROQ_MODEL_MAX_COMPLETION_TOKENS, GROQ_FOOD_ANALYSIS_PROMPT, GROQ_NUTRITION_CALCULATION_PROMPT } from '../constants';
+import { NutritionResult } from '../utils/nutritionCalculator';
 
 export interface GroqFoodItem {
   name: string;
@@ -16,36 +19,6 @@ export interface GroqFoodIdentificationResult {
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-/**
- * Convert image file to base64
- */
-async function imageToBase64(imagePath: string): Promise<string> {
-  // Remove file:// prefix if present
-  const cleanPath = imagePath.replace('file://', '');
-
-  // Read file as base64
-  const base64 = await RNFS.readFile(cleanPath, 'base64');
-  return base64;
-}
-
-/**
- * Detect image mime type from file extension
- */
-function getImageMimeType(imagePath: string): string {
-  const extension = imagePath.toLowerCase().split('.').pop();
-  switch (extension) {
-    case 'png':
-      return 'image/png';
-    case 'gif':
-      return 'image/gif';
-    case 'webp':
-      return 'image/webp';
-    case 'jpg':
-    case 'jpeg':
-    default:
-      return 'image/jpeg';
-  }
-}
 
 /**
  * Analyze food image using Groq's vision model
@@ -60,36 +33,7 @@ export async function analyzeImageWithGroq(
     const mimeType = getImageMimeType(imageFilePath);
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
 
-    const prompt = `Look at this food image and identify ONLY the edible food items.
-
-    RULES:
-    1. Name the dish specifically (Turkish, Indian, Italian, etc.)
-    2. List ONLY edible food components - ignore plates, utensils, napkins, etc.
-    3. Break down each distinct food item separately with weight in grams
-    4. Estimate realistic portions based on visual context
-    5. Be accurate with gram estimations
-    
-    JSON format:
-    {
-      "isFood": true,
-      "mealName": "Dish Name",
-      "items": [
-        {
-          "name": "item name",
-          "quantity": "1 piece",
-          "estimatedGrams": 100
-        }
-      ]
-    }
-    
-    If no food visible:
-    {
-      "isFood": false,
-      "items": [],
-      "message": "No food detected in image"
-    }
-    
-    Analyze the image and respond with ONLY valid JSON, no other text:`;
+    const prompt = GROQ_FOOD_ANALYSIS_PROMPT;
     
 
     const response = await fetch(GROQ_API_URL, {
@@ -99,7 +43,7 @@ export async function analyzeImageWithGroq(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        model: GROQ_MODEL,
         messages: [
           {
             role: 'user',
@@ -117,9 +61,9 @@ export async function analyzeImageWithGroq(
             ],
           },
         ],
-        temperature: 0.6,
-        max_completion_tokens: 4096,
-        top_p: 0.95,
+        temperature: GROQ_MODEL_TEMPERATURE,
+        max_completion_tokens: GROQ_MODEL_MAX_COMPLETION_TOKENS,
+        top_p: GROQ_MODEL_TOP_P,
         stream: false,
       }),
     });
@@ -160,7 +104,7 @@ export async function analyzeImageWithGroq(
 
     return {
       isFood: parsed.isFood !== false,
-      mealName: parsed.mealName || generateMealName(items),
+      mealName: parsed.mealName || "Unknown Meal",
       items,
       message: parsed.message,
     };
@@ -171,14 +115,95 @@ export async function analyzeImageWithGroq(
 }
 
 /**
- * Generate a meal name from items if not provided
+ * Calculate nutrition for food items using Groq's text model
+ * This is used for Pro users for faster, cloud-based nutrition analysis
  */
-function generateMealName(items: GroqFoodItem[]): string {
-  if (items.length === 0) return 'Unknown Meal';
-  if (items.length === 1) return items[0].name;
+export async function calculateNutritionWithGroq(
+  items: { name: string; quantity: string; estimatedGrams: number }[]
+): Promise<NutritionResult> {
+  try {
+    const foodList = items.map(i => `- ${i.name}: ${i.estimatedGrams}g`).join('\n');
 
-  // Use the first item and count
-  const mainItem = items[0].name;
-  const otherCount = items.length - 1;
-  return `${mainItem} with ${otherCount} more item${otherCount > 1 ? 's' : ''}`;
+    const prompt = `${GROQ_NUTRITION_CALCULATION_PROMPT}
+
+Meal items:
+${foodList}`;
+
+    const response = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: GROQ_MODEL_TEMPERATURE,
+        max_completion_tokens: GROQ_MODEL_MAX_COMPLETION_TOKENS,
+        top_p: GROQ_MODEL_TOP_P,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Groq nutrition API error:', response.status, errorText);
+      throw new Error(`Groq API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error('No response from Groq API');
+    }
+
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('Failed to extract JSON from Groq nutrition response:', content);
+      throw new Error('Invalid response format from Groq');
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    return {
+      macros: {
+        calories: parsed.macros?.calories || 0,
+        protein: parsed.macros?.protein || 0,
+        carbs: parsed.macros?.carbs || 0,
+        fat: parsed.macros?.fat || 0,
+        fiber: parsed.macros?.fiber || 0,
+        sugar: parsed.macros?.sugar || 0,
+        saturatedFat: parsed.macros?.saturatedFat || 0,
+        sodium: parsed.macros?.sodium || 0,
+        cholesterol: parsed.macros?.cholesterol || 0,
+      },
+      micros: normalizeMicros(parsed.micros),
+      healthScore: parsed.healthScore || 0,
+      reasoning: parsed.reasoning || 'No reasoning provided.',
+      badIngredients: Array.isArray(parsed.badIngredients) ? parsed.badIngredients : [],
+      goodIngredients: Array.isArray(parsed.goodIngredients) ? parsed.goodIngredients : [],
+    };
+  } catch (error: any) {
+    console.error('Groq nutrition calculation error:', error);
+    throw new Error(`Failed to calculate nutrition with Groq: ${error.message}`);
+  }
 }
+
+function normalizeMicros(micros: unknown): string[] {
+  if (Array.isArray(micros)) {
+    return micros
+      .map((m) => (typeof m === 'string' ? m : typeof m === 'object' && m ? Object.keys(m)[0] : ''))
+      .filter((m) => m);
+  }
+  if (micros && typeof micros === 'object') {
+    return Object.keys(micros);
+  }
+  return [];
+}
+

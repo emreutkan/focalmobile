@@ -208,6 +208,78 @@ export const GOOD_INGREDIENTS = [
   'collagen',
 ] as const;
 
+export const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+export const GROQ_MODEL_TEMPERATURE = 0.6;
+export const GROQ_MODEL_TOP_P = 0.95;
+export const GROQ_MODEL_MAX_COMPLETION_TOKENS = 4096;
+
+export const GROQ_FOOD_ANALYSIS_PROMPT = `Look at this food image and identify ONLY the edible food items.
+
+    RULES:
+    1. Name the dish specifically (Turkish, Indian, Italian, etc.)
+    2. List ONLY edible food components - ignore plates, utensils, napkins, etc.
+    3. Break down each distinct food item separately with weight in grams
+    4. Estimate realistic portions based on visual context
+    5. Be accurate with gram estimations
+    
+    JSON format:
+    {
+      "isFood": true,
+      "mealName": "Dish Name",
+      "items": [
+        {
+          "name": "item name",
+          "quantity": "1 piece",
+          "estimatedGrams": 100
+        }
+      ]
+    }
+    
+    If no food visible:
+    {
+      "isFood": false,
+      "items": [],
+      "message": "No food detected in image"
+    }
+    
+    Analyze the image and respond with ONLY valid JSON, no other text:`;
+
+export const GROQ_NUTRITION_CALCULATION_PROMPT = `You are a professional nutritionist. Calculate detailed nutrition for the given meal items.
+
+RULES:
+1. Calculate realistic macronutrient values based on the gram weights provided
+2. Use standard nutritional references (USDA database values)
+3. Protein: ~4 cal/g, Carbs: ~4 cal/g, Fat: ~9 cal/g
+4. Identify ALL micronutrients (vitamins, minerals, beneficial compounds) present in significant amounts
+5. Flag any bad/processed ingredients (seed oils, artificial sweeteners, preservatives, food dyes, trans fats, MSG)
+6. Highlight good/healthy ingredients (healthy fats, whole grains, lean proteins, vegetables, fruits, fermented foods)
+7. Provide a healthScore from 0-100 (higher = healthier) with brief reasoning
+
+MICRONUTRIENTS to check for: vitamin_a, vitamin_b1_thiamine, vitamin_b2_riboflavin, vitamin_b3_niacin, vitamin_b5_pantothenic, vitamin_b6, vitamin_b7_biotin, vitamin_b9_folate, vitamin_b12, vitamin_c, vitamin_d, vitamin_e, vitamin_k, choline, beta_carotene, lycopene, calcium, iron, magnesium, phosphorus, potassium, zinc, copper, manganese, selenium, chromium, molybdenum, iodine, omega_3, omega_6, lutein, zeaxanthin, flavonoids, polyphenols
+
+BAD INGREDIENTS to flag if likely present: soybean_oil, canola_oil, corn_oil, vegetable_oil, margarine, high_fructose_corn_syrup, aspartame, sucralose, maltodextrin, sodium_nitrate, sodium_nitrite, msg, trans_fat, red_40, yellow_5, natural_flavors, carrageenan
+
+GOOD INGREDIENTS to highlight if present: olive_oil, avocado_oil, grass_fed_butter, nuts, seeds, avocado, wild_caught_fish, legumes, leafy_greens, cruciferous_vegetables, berries, turmeric, ginger, garlic, yogurt, whole_wheat, quinoa, oats
+
+Respond with ONLY this JSON format (no markdown, no code fences, no extra text):
+{
+  "macros": {
+    "calories": 0,
+    "protein": 0,
+    "carbs": 0,
+    "fat": 0,
+    "fiber": 0,
+    "sugar": 0,
+    "saturatedFat": 0,
+    "sodium": 0,
+    "cholesterol": 0
+  },
+  "micros": ["vitamin_a", "iron"],
+  "healthScore": 75,
+  "reasoning": "Brief explanation of the health score",
+  "badIngredients": [],
+  "goodIngredients": ["lean_protein", "vegetables"]
+}`;
 // Type exports for TypeScript
 export type Macronutrient = typeof MACRONUTRIENTS[number];
 export type Micronutrient = typeof MICRONUTRIENTS[number];

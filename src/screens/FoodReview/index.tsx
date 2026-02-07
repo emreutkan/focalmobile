@@ -4,6 +4,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ReviewItems, { FoodItem } from "@/src/components/ReviewItems";
 import { calculateNutrition } from "@/src/utils/nutritionCalculator";
+import { calculateNutritionWithGroq } from "@/src/services/groqService";
+import { useUserStore } from "@/src/hooks/userStore";
 import LoadingScreen from "@/src/components/LoadingScreen";
 import { theme } from "@/src/theme";
 
@@ -30,6 +32,7 @@ export default function FoodReviewScreen() {
     }
   });
   const [calculating, setCalculating] = useState(false);
+  const isPro = useUserStore((state) => state.isPro);
 
   const handleUpdateItem = (index: number, field: keyof FoodItem, value: string | number) => {
     const newItems = [...items];
@@ -56,7 +59,9 @@ export default function FoodReviewScreen() {
       console.log('Total items:', items.length);
       
       setCalculating(true);
-      const nutritionResult = await calculateNutrition(items);
+      const nutritionResult = isPro
+        ? await calculateNutritionWithGroq(items)
+        : await calculateNutrition(items);
       
       console.log('Nutrition calculation completed, navigating to results...');
       
