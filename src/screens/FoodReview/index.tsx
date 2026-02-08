@@ -54,9 +54,7 @@ export default function FoodReviewScreen() {
     }
 
     try {
-      console.log('=== USER CONFIRMED FOOD ITEMS ===');
       console.log('Items being sent to nutrition calculator:', JSON.stringify(items, null, 2));
-      console.log('Total items:', items.length);
       
       setCalculating(true);
       const nutritionResult = isPro

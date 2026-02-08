@@ -11,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/theme';
-import { deleteAllData } from '@/src/utils/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserStore } from '@/src/hooks/userStore';
 
@@ -26,21 +25,17 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.removeItem('user-store');
-            setIsAuthenticated(false);
-          },
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await AsyncStorage.removeItem('user-store');
+          setIsAuthenticated(false);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleDeleteData = () => {
@@ -55,7 +50,7 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               setIsDeleting(true);
-              await deleteAllData();
+              // await deleteAllData();
               Alert.alert('Success', 'All data has been deleted.');
             } catch (error) {
               console.error('Error deleting data:', error);
@@ -65,7 +60,7 @@ export default function SettingsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -86,7 +81,10 @@ export default function SettingsScreen() {
         <View style={styles.backButton} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         {!isPro && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>UPGRADE</Text>
@@ -100,7 +98,11 @@ export default function SettingsScreen() {
               <View style={styles.proCardInner}>
                 <View style={styles.proCardHeader}>
                   <View style={styles.proIconCircle}>
-                    <Ionicons name="diamond" size={theme.sizes.iconLg} color={theme.colors.text} />
+                    <Ionicons
+                      name="diamond"
+                      size={theme.sizes.iconLg}
+                      color={theme.colors.text}
+                    />
                   </View>
                   <View style={styles.proBadgeLarge}>
                     <Ionicons name="star" size={10} color={theme.colors.text} />
@@ -108,10 +110,16 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Text style={styles.proCardTitle}>UNLOCK FULL POTENTIAL</Text>
-                <Text style={styles.proCardSubtitle}>Unlimited scans, deep insights, cloud sync & more</Text>
+                <Text style={styles.proCardSubtitle}>
+                  Unlimited scans, deep insights, cloud sync & more
+                </Text>
                 <View style={styles.proCardCta}>
                   <Text style={styles.proCardCtaText}>GET STARTED</Text>
-                  <Ionicons name="arrow-forward" size={theme.sizes.iconSm} color={theme.colors.text} />
+                  <Ionicons
+                    name="arrow-forward"
+                    size={theme.sizes.iconSm}
+                    color={theme.colors.text}
+                  />
                 </View>
               </View>
             </TouchableOpacity>
@@ -128,13 +136,23 @@ export default function SettingsScreen() {
             disabled={isDeleting}
           >
             <View style={styles.menuItemIcon}>
-              <Ionicons name="trash-outline" size={theme.sizes.iconLg} color={theme.colors.error} />
+              <Ionicons
+                name="trash-outline"
+                size={theme.sizes.iconLg}
+                color={theme.colors.error}
+              />
             </View>
             <View style={styles.menuItemContent}>
               <Text style={styles.menuItemTitle}>Delete All Data</Text>
-              <Text style={styles.menuItemSubtitle}>Remove all meals and start fresh</Text>
+              <Text style={styles.menuItemSubtitle}>
+                Remove all meals and start fresh
+              </Text>
             </View>
-            <Ionicons name="chevron-forward" size={theme.sizes.iconMd} color={theme.colors.textTertiary} />
+            <Ionicons
+              name="chevron-forward"
+              size={theme.sizes.iconMd}
+              color={theme.colors.textTertiary}
+            />
           </TouchableOpacity>
         </View>
 
@@ -147,13 +165,23 @@ export default function SettingsScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.menuItemIcon}>
-              <Ionicons name="log-out-outline" size={theme.sizes.iconLg} color={theme.colors.error} />
+              <Ionicons
+                name="log-out-outline"
+                size={theme.sizes.iconLg}
+                color={theme.colors.error}
+              />
             </View>
             <View style={styles.menuItemContent}>
               <Text style={styles.menuItemTitle}>Logout</Text>
-              <Text style={styles.menuItemSubtitle}>Sign out of your account</Text>
+              <Text style={styles.menuItemSubtitle}>
+                Sign out of your account
+              </Text>
             </View>
-            <Ionicons name="chevron-forward" size={theme.sizes.iconMd} color={theme.colors.textTertiary} />
+            <Ionicons
+              name="chevron-forward"
+              size={theme.sizes.iconMd}
+              color={theme.colors.textTertiary}
+            />
           </TouchableOpacity>
         </View>
 
@@ -162,7 +190,11 @@ export default function SettingsScreen() {
 
           <View style={styles.menuItem}>
             <View style={styles.menuItemIcon}>
-              <Ionicons name="information-circle-outline" size={theme.sizes.iconLg} color={theme.colors.primary} />
+              <Ionicons
+                name="information-circle-outline"
+                size={theme.sizes.iconLg}
+                color={theme.colors.primary}
+              />
             </View>
             <View style={styles.menuItemContent}>
               <Text style={styles.menuItemTitle}>Version</Text>
@@ -172,7 +204,11 @@ export default function SettingsScreen() {
 
           <View style={styles.menuItem}>
             <View style={styles.menuItemIcon}>
-              <Ionicons name="heart-outline" size={theme.sizes.iconLg} color={theme.card.fatCard} />
+              <Ionicons
+                name="heart-outline"
+                size={theme.sizes.iconLg}
+                color={theme.card.fatCard}
+              />
             </View>
             <View style={styles.menuItemContent}>
               <Text style={styles.menuItemTitle}>Made with love</Text>
@@ -191,13 +227,23 @@ export default function SettingsScreen() {
               activeOpacity={0.8}
             >
               <View style={styles.menuItemIcon}>
-                <Ionicons name="code-slash-outline" size={theme.sizes.iconLg} color={theme.colors.primary} />
+                <Ionicons
+                  name="code-slash-outline"
+                  size={theme.sizes.iconLg}
+                  color={theme.colors.primary}
+                />
               </View>
               <View style={styles.menuItemContent}>
                 <Text style={styles.menuItemTitle}>Dev Screen</Text>
-                <Text style={styles.menuItemSubtitle}>Developer tools and testing</Text>
+                <Text style={styles.menuItemSubtitle}>
+                  Developer tools and testing
+                </Text>
               </View>
-              <Ionicons name="chevron-forward" size={theme.sizes.iconMd} color={theme.colors.textTertiary} />
+              <Ionicons
+                name="chevron-forward"
+                size={theme.sizes.iconMd}
+                color={theme.colors.textTertiary}
+              />
             </TouchableOpacity>
           </View>
         )}

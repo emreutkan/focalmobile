@@ -119,7 +119,7 @@ import { useUserStore } from "@/src/hooks/userStore";
         throw new Error(result.message || "No food detected in this image. Please take a photo of food.");
       }
 
-      
+
       router.push({
         pathname: "/foodReview",
         params: {
@@ -166,14 +166,6 @@ import { useUserStore } from "@/src/hooks/userStore";
         throw new Error(result.message || "No food detected in this image. Please take a photo of food.");
       }
 
-      // router.push({
-      
-      //   pathname: "/foodReview",
-      //   params: {
-      //     items: encodeURIComponent(JSON.stringify(result.items)),
-      //     mealName: encodeURIComponent(result.mealName || ''),
-      //   },
-      // });
     } catch (error: any) {
       console.error('Error analyzing with local model:', error);
       setError(error.message || "Failed to analyze image");
@@ -236,14 +228,6 @@ import { useUserStore } from "@/src/hooks/userStore";
       ? "DOWNLOAD MODEL FIRST"
       : "ANALYZE";
 
-      console.log('imageUri:', imageUri);
-      console.log('isPro:', isPro);
-      console.log('isModelDownloaded:', isModelDownloaded);
-      console.log('isModelReady:', isModelReady);
-      console.log('canAnalyze:', canAnalyze);
-      console.log('buttonLabel:', buttonLabel);
-      console.log('analyzing:', analyzing);
-      console.log('status:', status);
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>

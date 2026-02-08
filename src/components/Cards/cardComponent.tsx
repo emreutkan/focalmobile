@@ -12,7 +12,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 const OFFSET = 4;
 
 interface CardComponentProps {

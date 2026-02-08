@@ -2,7 +2,6 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { theme } from "@/src/theme";
-
 export default function TopBar() {
   const router = useRouter();
   const today = new Date();
@@ -11,9 +10,11 @@ export default function TopBar() {
 
   return (
     <View style={styles.container}>
+      <View>
       <Text style={styles.title}>
         focal<Text style={styles.dot}>.</Text>
       </Text>
+      </View>
       <View style={styles.rightSection}>
         <Text style={styles.date}>{month} {dayOfMonth}</Text>
         <TouchableOpacity

@@ -1,25 +1,8 @@
 import { initializeModel } from "./ModelManagement/modelInitializer";
 import { Models } from "../constants";
 import { FoodItem } from "../components/ReviewItems";
+import { NutritionResult } from "../services/databaseService";
 
-export interface NutritionResult {
-  macros: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    fiber?: number;
-    sugar?: number;
-    saturatedFat?: number;
-    sodium?: number;
-    cholesterol?: number;
-  };
-  micros: string[];
-  healthScore: number;
-  reasoning: string;
-  badIngredients: string[];
-  goodIngredients: string[];
-}
 
 export const calculateNutrition = async (items: FoodItem[]): Promise<NutritionResult> => {
   // Format items for the prompt with clear gram amounts
@@ -83,18 +66,8 @@ JSON only. No markdown, no code fences, no extra text:`;
       };
     }
 
-    // Fallback
-    return extractNutritionFromText(text);
   } catch (error: any) {
     console.error("Error calculating nutrition:", error);
-    return {
-      macros: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      micros: [],
-      healthScore: 0,
-      reasoning: "Failed to analyze nutrition.",
-      badIngredients: [],
-      goodIngredients: [],
-    };
   }
 };
 
@@ -169,27 +142,3 @@ function normalizeMicros(micros: unknown): string[] {
   return [];
 }
 
-function extractNutritionFromText(text: string): NutritionResult {
-  const result: NutritionResult = {
-    macros: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    micros: [],
-    healthScore: 0,
-    reasoning: text.substring(0, 200),
-    badIngredients: [],
-    goodIngredients: [],
-  };
-
-  const caloriesMatch = text.match(/calories?[:\s]+(\d+)/i);
-  const proteinMatch = text.match(/protein[:\s]+(\d+)/i);
-  const carbsMatch = text.match(/carbs?[:\s]+(\d+)/i);
-  const fatMatch = text.match(/fat[:\s]+(\d+)/i);
-  const scoreMatch = text.match(/health\s*score[:\s]+(\d+)/i);
-
-  if (caloriesMatch) result.macros.calories = parseInt(caloriesMatch[1]);
-  if (proteinMatch) result.macros.protein = parseInt(proteinMatch[1]);
-  if (carbsMatch) result.macros.carbs = parseInt(carbsMatch[1]);
-  if (fatMatch) result.macros.fat = parseInt(fatMatch[1]);
-  if (scoreMatch) result.healthScore = parseInt(scoreMatch[1]);
-
-  return result;
-}

@@ -7,11 +7,10 @@ import { StyleSheet } from "react-native";
 
 interface ShowImageProps {
   selectedImage: string | null;
-  setShowImageModal: (show: boolean) => void;
   handleCancel: () => void;
   handleGoodToGo: () => void;
 }
-export function ShowImage({ selectedImage, setShowImageModal, handleCancel, handleGoodToGo }: ShowImageProps) {
+export function ShowImage({ selectedImage, handleCancel, handleGoodToGo }: ShowImageProps) {
   console.log('ShowImage rendered, selectedImage:', selectedImage);
   return (
     <View style={styles.overlay}>

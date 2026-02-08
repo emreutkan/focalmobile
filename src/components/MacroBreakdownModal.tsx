@@ -17,7 +17,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { theme } from "../theme";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 

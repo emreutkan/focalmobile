@@ -13,7 +13,6 @@ import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native
 import CardComponent from "@/src/components/Cards/cardComponent";
 import { Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { initDatabase, getDailyTotals, getTodaysMeals, getMacroBreakdown, deleteMeal, getMealById } from "@/src/utils/database";
 import { MediaSelection } from "./components/mediaSelection";
 import * as ImagePicker from "expo-image-picker";
 import { MediaPermission } from "./components/mediaPermission";
@@ -25,7 +24,6 @@ export default function HomeScreen() {
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-      console.log(scrollY.value);
     },
   });
     const [refreshing,setRefreshing] = useState(false);
@@ -35,7 +33,6 @@ export default function HomeScreen() {
     const [meals, setMeals] = useState<any[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [modalType, setModalType] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories');
-    const [breakdownData, setBreakdownData] = useState<Array<{ name: string; value: number; time: string }>>([]);
     const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
     const [galleryPermission, setGalleryPermission] = useState<boolean | null>(null);
     const [showPermissionModal, setShowPermissionModal] = useState(false);
@@ -64,45 +61,20 @@ export default function HomeScreen() {
     }, []);
 
 
-    const loadData = useCallback(async () => {
-      try {
-        await initDatabase();
-        const totals = await getDailyTotals();
-        setDailyTotals(totals);
-        
-        const todaysMeals = await getTodaysMeals();
-        const mealsWithItems = await Promise.all(
-          todaysMeals.map(async (meal) => {
-            const fullMeal = await getMealById(meal.id);
-            return fullMeal;
-          })
-        );
-        setMeals(mealsWithItems.filter(Boolean));
-      } catch (error) {
-        console.error('Error loading data:', error);
-      }
-    }, []);
-
-    useEffect(() => {
-      loadData();
-    }, [loadData]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        await loadData();
         setRefreshing(false);
-    }, [loadData]);
+    }, []);
 
     const handleCardPress = useCallback(async (type: 'calories' | 'protein' | 'carbs' | 'fat') => {
       try {
-        const breakdown = await getMacroBreakdown(type);
-        setBreakdownData(breakdown);
-        setModalType(type);
-        setModalVisible(true);
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // await deleteMeal(mealId);
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch (error) {
-        console.error('Error loading breakdown:', error);
+        console.error('Error deleting meal:', error);
+        Alert.alert('Error', 'Failed to delete meal');
       }
     }, []);
 
@@ -117,8 +89,7 @@ export default function HomeScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
-                await deleteMeal(mealId);
-                await loadData();
+                // await deleteMeal(mealId);
                 await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               } catch (error) {
                 console.error('Error deleting meal:', error);
@@ -128,7 +99,7 @@ export default function HomeScreen() {
           },
         ]
       );
-    }, [loadData]);
+    }, []);
 
     const {top, bottom} = useSafeAreaInsets();
     const { width } = Dimensions.get("window");
@@ -160,17 +131,11 @@ export default function HomeScreen() {
 
     useEffect(() => {
       if (selectedImage) {
-        console.log('selectedImage set:', selectedImage);
-        console.log('Setting showImageModal to true');
         setShowMediaSelection(false);
         setShowPermissionModal(false);
         setShowImageModal(true);
       }
     }, [selectedImage]);
-
-    useEffect(() => {
-      console.log('showImageModal changed:', showImageModal);
-    }, [showImageModal]);
     
     return (
         <>
@@ -248,7 +213,7 @@ export default function HomeScreen() {
                     dailyTotals.total_fat
                   }
                   unit={modalType === 'calories' ? 'kcal' : 'g'}
-                  items={breakdownData}
+                  items={[]}
                   headerColor={
                     modalType === 'calories' ? theme.card.dailySummary :
                     modalType === 'protein' ? theme.card.proteinCard :
@@ -268,7 +233,7 @@ export default function HomeScreen() {
                     theme.card.fatCard
                   }
                 />
-                {showImageModal && <ShowImage selectedImage={selectedImage} setShowImageModal={setShowImageModal} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} />}
+                {showImageModal && <ShowImage selectedImage={selectedImage} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} />}
             </View>
         </>
     )
@@ -280,13 +245,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,
-    },
-    backgroundImage: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
     },
     floatingButtonContainer: {
       position: 'absolute',

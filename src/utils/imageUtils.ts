@@ -7,6 +7,7 @@ export async function imageToBase64(imagePath: string): Promise<string> {
   const cleanPath = imagePath.replace('file://', '');
 
   // Read file as base64
+
   const base64 = await RNFS.readFile(cleanPath, 'base64');
   return base64;
 }
@@ -29,3 +30,4 @@ export function getImageMimeType(imagePath: string): string {
       return 'image/jpeg';
   }
 }
+

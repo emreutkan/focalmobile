@@ -3,10 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "rea
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { theme } from "@/src/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NutritionResult } from "@/src/utils/nutritionCalculator";
 import { FoodItem } from "@/src/components/ReviewItems";
-import { saveMeal } from "@/src/utils/database";
 import { Ionicons } from "@expo/vector-icons";
+import { NutritionResult, saveMeal } from "@/src/services/databaseService";
 
 export default function NutritionResultsScreen() {
   const { nutritionData, foodItems: foodItemsParam, mealName: mealNameParam } = useLocalSearchParams<{
@@ -36,11 +35,17 @@ export default function NutritionResultsScreen() {
 
     try {
       setSaving(true);
-      await saveMeal({
-        mealName,
-        nutrition,
-        foodItems,
-      });
+      
+      const mealId = await saveMeal(
+        mealName || 'Untitled Meal',
+        nutrition.healthScore,
+        nutrition.reasoning,
+        nutrition.foodItems,
+        undefined // Add imagePath if you have it
+      );
+      
+      console.log('Meal saved with ID:', mealId);
+      
       setSaved(true);
       Alert.alert("Saved", "Meal logged successfully!", [
         { text: "OK", onPress: () => router.replace("/") }
@@ -65,6 +70,34 @@ export default function NutritionResultsScreen() {
     );
   }
 
+  // Calculate total macros from all food items
+  const totalMacros = nutrition.foodItems.reduce((acc, item) => ({
+    protein: acc.protein + item.macros.protein,
+    carbs: acc.carbs + item.macros.carbs,
+    fat: acc.fat + item.macros.fat,
+    calories: acc.calories + item.macros.calories,
+    fiber: acc.fiber + item.macros.fiber,
+    sugar: acc.sugar + item.macros.sugar,
+    saturatedFat: acc.saturatedFat + item.macros.saturatedFat,
+  }), {
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    calories: 0,
+    fiber: 0,
+    sugar: 0,
+    saturatedFat: 0,
+  });
+
+  // Collect all unique micros from all food items
+  const allMicros = Array.from(
+    new Set(
+      nutrition.foodItems.flatMap(item => 
+        item.micros.map(m => m.name)
+      )
+    )
+  );
+
   const getScoreEmoji = (score: number) => {
     if (score >= 80) return "🌟";
     if (score >= 60) return "👍";
@@ -85,13 +118,11 @@ export default function NutritionResultsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Meal Analysis</Text>
           {mealName ? <Text style={styles.mealName}>{mealName}</Text> : null}
         </View>
 
-        {/* Health Score Card - Hero */}
         <View style={[styles.scoreCard, { backgroundColor: getScoreColor(nutrition.healthScore) }]}>
           <View style={styles.scoreCardInner}>
             <Text style={styles.scoreEmoji}>{getScoreEmoji(nutrition.healthScore)}</Text>
@@ -104,42 +135,41 @@ export default function NutritionResultsScreen() {
           <Text style={styles.reasoning}>{nutrition.reasoning}</Text>
         </View>
 
-        {/* Macros Grid */}
         <Text style={styles.sectionTitle}>Nutrition Facts</Text>
         <View style={styles.macrosGrid}>
           <View style={[styles.macroCard, styles.calorieCard]}>
             <Ionicons name="flame" size={24} color="#FF6B6B" />
-            <Text style={styles.macroValue}>{Math.round(nutrition.macros.calories)}</Text>
+            <Text style={styles.macroValue}>{Math.round(totalMacros.calories)}</Text>
             <Text style={styles.macroLabel}>Calories</Text>
           </View>
           <View style={[styles.macroCard, styles.proteinCard]}>
             <Ionicons name="fish" size={24} color="#4ECDC4" />
-            <Text style={styles.macroValue}>{Math.round(nutrition.macros.protein)}g</Text>
+            <Text style={styles.macroValue}>{Math.round(totalMacros.protein)}g</Text>
             <Text style={styles.macroLabel}>Protein</Text>
           </View>
           <View style={[styles.macroCard, styles.carbCard]}>
             <Ionicons name="leaf" size={24} color="#FFE66D" />
-            <Text style={styles.macroValue}>{Math.round(nutrition.macros.carbs)}g</Text>
+            <Text style={styles.macroValue}>{Math.round(totalMacros.carbs)}g</Text>
             <Text style={styles.macroLabel}>Carbs</Text>
           </View>
           <View style={[styles.macroCard, styles.fatCard]}>
             <Ionicons name="water" size={24} color="#A78BFA" />
-            <Text style={styles.macroValue}>{Math.round(nutrition.macros.fat)}g</Text>
+            <Text style={styles.macroValue}>{Math.round(totalMacros.fat)}g</Text>
             <Text style={styles.macroLabel}>Fat</Text>
           </View>
         </View>
 
         {/* Extended Macros */}
-        {(nutrition.macros.fiber || nutrition.macros.sugar) && (
+        {(totalMacros.fiber || totalMacros.sugar) && (
           <View style={styles.extendedMacros}>
-            {nutrition.macros.fiber ? (
+            {totalMacros.fiber ? (
               <View style={styles.extendedMacroChip}>
-                <Text style={styles.extendedMacroText}>Fiber {Math.round(nutrition.macros.fiber)}g</Text>
+                <Text style={styles.extendedMacroText}>Fiber {Math.round(totalMacros.fiber)}g</Text>
               </View>
             ) : null}
-            {nutrition.macros.sugar ? (
+            {totalMacros.sugar ? (
               <View style={styles.extendedMacroChip}>
-                <Text style={styles.extendedMacroText}>Sugar {Math.round(nutrition.macros.sugar)}g</Text>
+                <Text style={styles.extendedMacroText}>Sugar {Math.round(totalMacros.sugar)}g</Text>
               </View>
             ) : null}
           </View>
@@ -180,14 +210,14 @@ export default function NutritionResultsScreen() {
         )}
 
         {/* Micronutrients */}
-        {nutrition.micros.length > 0 && (
+        {allMicros.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="sparkles" size={24} color={theme.colors.primary} />
               <Text style={styles.sectionTitle}>Vitamins & Minerals</Text>
             </View>
             <View style={styles.tagContainer}>
-              {nutrition.micros.map((micro, idx) => (
+              {allMicros.map((micro, idx) => (
                 <View key={idx} style={styles.microTag}>
                   <Text style={styles.microTagText}>{micro.replace(/_/g, ' ')}</Text>
                 </View>
@@ -197,17 +227,17 @@ export default function NutritionResultsScreen() {
         )}
 
         {/* Food Items Summary */}
-        {foodItems.length > 0 && (
+        {nutrition.foodItems.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="restaurant" size={24} color={theme.colors.text} />
               <Text style={styles.sectionTitle}>What We Found</Text>
             </View>
             <View style={styles.foodItemsCard}>
-              {foodItems.map((item, idx) => (
+              {nutrition.foodItems.map((item, idx) => (
                 <View key={idx} style={styles.foodItemRow}>
-                  <Text style={styles.foodItemName}>{item.name}</Text>
-                  <Text style={styles.foodItemQty}>{item.estimatedGrams}g</Text>
+                  <Text style={styles.foodItemName}>{item.itemName}</Text>
+                  <Text style={styles.foodItemQty}>{item.amountGrams}g</Text>
                 </View>
               ))}
             </View>
