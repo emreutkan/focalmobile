@@ -1,14 +1,25 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { theme } from "@/src/theme";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { FoodItem } from "@/src/components/ReviewItems";
-import { Ionicons } from "@expo/vector-icons";
-import { NutritionResult, saveMeal } from "@/src/services/databaseService";
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { theme } from '@/src/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FoodItem } from '@/src/components/ReviewItems';
+import { Ionicons } from '@expo/vector-icons';
+import { NutritionResult, saveMeal } from '@/src/services/databaseService';
 
 export default function NutritionResultsScreen() {
-  const { nutritionData, foodItems: foodItemsParam, mealName: mealNameParam } = useLocalSearchParams<{
+  const {
+    nutritionData,
+    foodItems: foodItemsParam,
+    mealName: mealNameParam,
+  } = useLocalSearchParams<{
     nutritionData: string;
     foodItems: string;
     mealName: string;
@@ -23,8 +34,12 @@ export default function NutritionResultsScreen() {
   let mealName = '';
 
   try {
-    nutrition = nutritionData ? JSON.parse(decodeURIComponent(nutritionData)) : null;
-    foodItems = foodItemsParam ? JSON.parse(decodeURIComponent(foodItemsParam)) : [];
+    nutrition = nutritionData
+      ? JSON.parse(decodeURIComponent(nutritionData))
+      : null;
+    foodItems = foodItemsParam
+      ? JSON.parse(decodeURIComponent(foodItemsParam))
+      : [];
     mealName = mealNameParam ? decodeURIComponent(mealNameParam) : '';
   } catch (e) {
     console.error('Failed to parse data:', e);
@@ -35,31 +50,31 @@ export default function NutritionResultsScreen() {
 
     try {
       setSaving(true);
-      
+
       const mealId = await saveMeal(
         mealName || 'Untitled Meal',
         nutrition.healthScore,
         nutrition.reasoning,
         nutrition.foodItems,
-        undefined // Add imagePath if you have it
+        undefined, // Add imagePath if you have it
       );
-      
+
       console.log('Meal saved with ID:', mealId);
-      
+
       setSaved(true);
-      Alert.alert("Saved", "Meal logged successfully!", [
-        { text: "OK", onPress: () => router.replace("/") }
+      Alert.alert('Saved', 'Meal logged successfully!', [
+        { text: 'OK', onPress: () => router.replace('/') },
       ]);
     } catch (error) {
-      console.error("Error saving meal:", error);
-      Alert.alert("Error", "Failed to save meal. Please try again.");
+      console.error('Error saving meal:', error);
+      Alert.alert('Error', 'Failed to save meal. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDiscard = () => {
-    router.replace("/");
+    router.replace('/');
   };
 
   if (!nutrition) {
@@ -71,44 +86,45 @@ export default function NutritionResultsScreen() {
   }
 
   // Calculate total macros from all food items
-  const totalMacros = nutrition.foodItems.reduce((acc, item) => ({
-    protein: acc.protein + item.macros.protein,
-    carbs: acc.carbs + item.macros.carbs,
-    fat: acc.fat + item.macros.fat,
-    calories: acc.calories + item.macros.calories,
-    fiber: acc.fiber + item.macros.fiber,
-    sugar: acc.sugar + item.macros.sugar,
-    saturatedFat: acc.saturatedFat + item.macros.saturatedFat,
-  }), {
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    calories: 0,
-    fiber: 0,
-    sugar: 0,
-    saturatedFat: 0,
-  });
+  const totalMacros = nutrition.foodItems.reduce(
+    (acc, item) => ({
+      protein: acc.protein + item.macros.protein,
+      carbs: acc.carbs + item.macros.carbs,
+      fat: acc.fat + item.macros.fat,
+      calories: acc.calories + item.macros.calories,
+      fiber: acc.fiber + item.macros.fiber,
+      sugar: acc.sugar + item.macros.sugar,
+      saturatedFat: acc.saturatedFat + item.macros.saturatedFat,
+    }),
+    {
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      calories: 0,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+    },
+  );
 
   // Collect all unique micros from all food items
   const allMicros = Array.from(
     new Set(
-      nutrition.foodItems.flatMap(item => 
-        item.micros.map(m => m.name)
-      )
-    )
+      nutrition.foodItems.flatMap((item) => item.micros.map((m) => m.name)),
+    ),
   );
 
   const getScoreEmoji = (score: number) => {
-    if (score >= 80) return "🌟";
-    if (score >= 60) return "👍";
-    if (score >= 40) return "😐";
-    return "😬";
+    if (score >= 80) return '🌟';
+    if (score >= 60) return '👍';
+    if (score >= 40) return '😐';
+    return '😬';
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 70) return "#4ECDC4";
-    if (score >= 40) return "#FFE66D";
-    return "#FF6B6B";
+    if (score >= 70) return '#4ECDC4';
+    if (score >= 40) return '#FFE66D';
+    return '#FF6B6B';
   };
 
   return (
@@ -123,9 +139,16 @@ export default function NutritionResultsScreen() {
           {mealName ? <Text style={styles.mealName}>{mealName}</Text> : null}
         </View>
 
-        <View style={[styles.scoreCard, { backgroundColor: getScoreColor(nutrition.healthScore) }]}>
+        <View
+          style={[
+            styles.scoreCard,
+            { backgroundColor: getScoreColor(nutrition.healthScore) },
+          ]}
+        >
           <View style={styles.scoreCardInner}>
-            <Text style={styles.scoreEmoji}>{getScoreEmoji(nutrition.healthScore)}</Text>
+            <Text style={styles.scoreEmoji}>
+              {getScoreEmoji(nutrition.healthScore)}
+            </Text>
             <View style={styles.scoreNumbers}>
               <Text style={styles.scoreBig}>{nutrition.healthScore}</Text>
               <Text style={styles.scoreMax}>/100</Text>
@@ -139,22 +162,30 @@ export default function NutritionResultsScreen() {
         <View style={styles.macrosGrid}>
           <View style={[styles.macroCard, styles.calorieCard]}>
             <Ionicons name="flame" size={24} color="#FF6B6B" />
-            <Text style={styles.macroValue}>{Math.round(totalMacros.calories)}</Text>
+            <Text style={styles.macroValue}>
+              {Math.round(totalMacros.calories)}
+            </Text>
             <Text style={styles.macroLabel}>Calories</Text>
           </View>
           <View style={[styles.macroCard, styles.proteinCard]}>
             <Ionicons name="fish" size={24} color="#4ECDC4" />
-            <Text style={styles.macroValue}>{Math.round(totalMacros.protein)}g</Text>
+            <Text style={styles.macroValue}>
+              {Math.round(totalMacros.protein)}g
+            </Text>
             <Text style={styles.macroLabel}>Protein</Text>
           </View>
           <View style={[styles.macroCard, styles.carbCard]}>
             <Ionicons name="leaf" size={24} color="#FFE66D" />
-            <Text style={styles.macroValue}>{Math.round(totalMacros.carbs)}g</Text>
+            <Text style={styles.macroValue}>
+              {Math.round(totalMacros.carbs)}g
+            </Text>
             <Text style={styles.macroLabel}>Carbs</Text>
           </View>
           <View style={[styles.macroCard, styles.fatCard]}>
             <Ionicons name="water" size={24} color="#A78BFA" />
-            <Text style={styles.macroValue}>{Math.round(totalMacros.fat)}g</Text>
+            <Text style={styles.macroValue}>
+              {Math.round(totalMacros.fat)}g
+            </Text>
             <Text style={styles.macroLabel}>Fat</Text>
           </View>
         </View>
@@ -164,69 +195,83 @@ export default function NutritionResultsScreen() {
           <View style={styles.extendedMacros}>
             {totalMacros.fiber ? (
               <View style={styles.extendedMacroChip}>
-                <Text style={styles.extendedMacroText}>Fiber {Math.round(totalMacros.fiber)}g</Text>
+                <Text style={styles.extendedMacroText}>
+                  Fiber {Math.round(totalMacros.fiber)}g
+                </Text>
               </View>
             ) : null}
             {totalMacros.sugar ? (
               <View style={styles.extendedMacroChip}>
-                <Text style={styles.extendedMacroText}>Sugar {Math.round(totalMacros.sugar)}g</Text>
+                <Text style={styles.extendedMacroText}>
+                  Sugar {Math.round(totalMacros.sugar)}g
+                </Text>
               </View>
             ) : null}
           </View>
         )}
 
-        {/* Good Ingredients */}
         {nutrition.goodIngredients.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="checkmark-circle" size={24} color="#4ECDC4" />
-              <Text style={[styles.sectionTitle, styles.goodTitle]}>Good Stuff</Text>
+              <Text style={[styles.sectionTitle, styles.goodTitle]}>
+                Good Stuff
+              </Text>
             </View>
             <View style={styles.tagContainer}>
               {nutrition.goodIngredients.map((ingredient, idx) => (
                 <View key={idx} style={styles.goodTag}>
-                  <Text style={styles.goodTagText}>{ingredient.replace(/_/g, ' ')}</Text>
+                  <Text style={styles.goodTagText}>
+                    {ingredient.replace(/_/g, ' ')}
+                  </Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* Bad Ingredients */}
         {nutrition.badIngredients.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="warning" size={24} color="#FF6B6B" />
-              <Text style={[styles.sectionTitle, styles.badTitle]}>Watch Out</Text>
+              <Text style={[styles.sectionTitle, styles.badTitle]}>
+                Watch Out
+              </Text>
             </View>
             <View style={styles.tagContainer}>
               {nutrition.badIngredients.map((ingredient, idx) => (
                 <View key={idx} style={styles.badTag}>
-                  <Text style={styles.badTagText}>{ingredient.replace(/_/g, ' ')}</Text>
+                  <Text style={styles.badTagText}>
+                    {ingredient.replace(/_/g, ' ')}
+                  </Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* Micronutrients */}
         {allMicros.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="sparkles" size={24} color={theme.colors.primary} />
+              <Ionicons
+                name="sparkles"
+                size={24}
+                color={theme.colors.primary}
+              />
               <Text style={styles.sectionTitle}>Vitamins & Minerals</Text>
             </View>
             <View style={styles.tagContainer}>
               {allMicros.map((micro, idx) => (
                 <View key={idx} style={styles.microTag}>
-                  <Text style={styles.microTagText}>{micro.replace(/_/g, ' ')}</Text>
+                  <Text style={styles.microTagText}>
+                    {micro.replace(/_/g, ' ')}
+                  </Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* Food Items Summary */}
         {nutrition.foodItems.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -245,12 +290,13 @@ export default function NutritionResultsScreen() {
         )}
       </ScrollView>
 
-      {/* Action Buttons */}
-      <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + theme.spacing.md }]}>
-        <TouchableOpacity
-          style={styles.discardButton}
-          onPress={handleDiscard}
-        >
+      <View
+        style={[
+          styles.buttonContainer,
+          { paddingBottom: insets.bottom + theme.spacing.md },
+        ]}
+      >
+        <TouchableOpacity style={styles.discardButton} onPress={handleDiscard}>
           <Text style={styles.discardButtonText}>Discard</Text>
         </TouchableOpacity>
 
@@ -260,7 +306,7 @@ export default function NutritionResultsScreen() {
           disabled={saving || saved}
         >
           <Text style={styles.saveButtonText}>
-            {saving ? "Saving..." : saved ? "Saved" : "Save Meal"}
+            {saving ? 'Saving...' : saved ? 'Saved' : 'Save Meal'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -284,7 +330,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   title: {
-    fontSize: theme.typography.fontSize["3xl"],
+    fontSize: theme.typography.fontSize['3xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
   },
@@ -307,8 +353,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   scoreCardInner: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.md,
   },
   scoreEmoji: {
@@ -316,8 +362,8 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.md,
   },
   scoreNumbers: {
-    flexDirection: "row",
-    alignItems: "baseline",
+    flexDirection: 'row',
+    alignItems: 'baseline',
     flex: 1,
   },
   scoreBig: {
@@ -328,18 +374,18 @@ const styles = StyleSheet.create({
   scoreMax: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: "rgba(0,0,0,0.3)",
+    color: 'rgba(0,0,0,0.3)',
     marginLeft: 4,
   },
   scoreLabel: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    backgroundColor: "rgba(255,255,255,0.5)",
+    backgroundColor: 'rgba(255,255,255,0.5)',
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
     borderRadius: theme.borderRadius.sm,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   reasoning: {
     fontSize: theme.typography.fontSize.base,
@@ -352,8 +398,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
   },
   sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
@@ -365,20 +411,20 @@ const styles = StyleSheet.create({
   },
   // Macros Grid
   macrosGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
   macroCard: {
     flex: 1,
-    minWidth: "47%",
+    minWidth: '47%',
     backgroundColor: theme.colors.card,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 3,
     borderColor: theme.colors.text,
-    alignItems: "center",
+    alignItems: 'center',
     shadowColor: theme.colors.text,
     shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
@@ -386,19 +432,19 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   calorieCard: {
-    backgroundColor: "#FFE5E5",
+    backgroundColor: '#FFE5E5',
   },
   proteinCard: {
-    backgroundColor: "#E5FFF9",
+    backgroundColor: '#E5FFF9',
   },
   carbCard: {
-    backgroundColor: "#FFFDE5",
+    backgroundColor: '#FFFDE5',
   },
   fatCard: {
-    backgroundColor: "#F3E8FF",
+    backgroundColor: '#F3E8FF',
   },
   macroValue: {
-    fontSize: theme.typography.fontSize["2xl"],
+    fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
     marginTop: theme.spacing.xs,
@@ -407,12 +453,12 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.textSecondary,
-    textTransform: "uppercase",
+    textTransform: 'uppercase',
     letterSpacing: 1,
   },
   extendedMacros: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
@@ -431,37 +477,37 @@ const styles = StyleSheet.create({
   },
   // Tags
   tagContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
   goodTag: {
-    backgroundColor: "#D1FAE5",
+    backgroundColor: '#D1FAE5',
     borderRadius: theme.borderRadius.full,
     borderWidth: 2,
-    borderColor: "#059669",
+    borderColor: '#059669',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
   goodTagText: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
-    color: "#059669",
-    textTransform: "capitalize",
+    color: '#059669',
+    textTransform: 'capitalize',
   },
   badTag: {
-    backgroundColor: "#FEE2E2",
+    backgroundColor: '#FEE2E2',
     borderRadius: theme.borderRadius.full,
     borderWidth: 2,
-    borderColor: "#DC2626",
+    borderColor: '#DC2626',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
   badTagText: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
-    color: "#DC2626",
-    textTransform: "capitalize",
+    color: '#DC2626',
+    textTransform: 'capitalize',
   },
   microTag: {
     backgroundColor: theme.colors.card,
@@ -475,14 +521,14 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.primary,
-    textTransform: "capitalize",
+    textTransform: 'capitalize',
   },
   badTitle: {
-    color: "#DC2626",
+    color: '#DC2626',
     marginBottom: 0,
   },
   goodTitle: {
-    color: "#059669",
+    color: '#059669',
     marginBottom: 0,
   },
   // Food Items
@@ -499,9 +545,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   foodItemRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
@@ -524,12 +570,12 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: theme.typography.fontSize.lg,
     color: theme.colors.error,
-    textAlign: "center",
+    textAlign: 'center',
     marginTop: theme.spacing.xl,
   },
   // Buttons
   buttonContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
@@ -542,7 +588,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: theme.colors.text,
     backgroundColor: theme.colors.background,
-    alignItems: "center",
+    alignItems: 'center',
     shadowColor: theme.colors.text,
     shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
@@ -561,7 +607,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: theme.colors.text,
     backgroundColor: theme.colors.primary,
-    alignItems: "center",
+    alignItems: 'center',
     shadowColor: theme.colors.text,
     shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
@@ -569,7 +615,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   savedButton: {
-    backgroundColor: "#4ECDC4",
+    backgroundColor: '#4ECDC4',
   },
   saveButtonText: {
     fontSize: theme.typography.fontSize.lg,

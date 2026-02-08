@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image } from "expo-image";
-import { theme } from "@/src/theme";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import RNFS from "react-native-fs";
-import LoadingScreen from "@/src/components/LoadingScreen";
-import { identifyFoodFromImage } from "@/src/utils/foodIdentifier";
-import { analyzeImageWithGroq } from "@/src/services/groqService";
-import { useModel } from "@/src/contexts/ModelContext";
-import { useUserStore } from "@/src/hooks/userStore";
-  export default function ImageAnalyzer() {
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Image } from 'expo-image';
+import { theme } from '@/src/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import RNFS from 'react-native-fs';
+import LoadingScreen from '@/src/components/LoadingScreen';
+import { identifyFoodFromImage } from '@/src/utils/foodIdentifier';
+import { analyzeImageWithGroq } from '@/src/services/groqService';
+import { useModel } from '@/src/contexts/ModelContext';
+import { useUserStore } from '@/src/hooks/userStore';
+export default function ImageAnalyzer() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -24,8 +24,10 @@ import { useUserStore } from "@/src/hooks/userStore";
   } = useModel();
 
   const [analyzing, setAnalyzing] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("Analyzing your food...");
-  const [error, setError] = useState<string>("");
+  const [loadingMessage, setLoadingMessage] = useState(
+    'Analyzing your food...',
+  );
+  const [error, setError] = useState<string>('');
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
   // Auto-analyze when entering screen (if Pro or model ready)
@@ -76,7 +78,9 @@ import { useUserStore } from "@/src/hooks/userStore";
         }
         return destPath;
       } catch (err: any) {
-        throw new Error(`Failed to copy image from content URI: ${err.message || err}`);
+        throw new Error(
+          `Failed to copy image from content URI: ${err.message || err}`,
+        );
       }
     }
 
@@ -96,7 +100,9 @@ import { useUserStore } from "@/src/hooks/userStore";
       return destPath;
     }
 
-    throw new Error(`Failed to download image: status ${downloadResult.statusCode}`);
+    throw new Error(
+      `Failed to download image: status ${downloadResult.statusCode}`,
+    );
   };
 
   /**
@@ -106,8 +112,8 @@ import { useUserStore } from "@/src/hooks/userStore";
   const analyzeWithGroq = async (imageUri: string) => {
     try {
       setAnalyzing(true);
-      setLoadingMessage("Analyzing with cloud AI...");
-      setError("");
+      setLoadingMessage('Analyzing with cloud AI...');
+      setError('');
 
       const imageFilePath = await convertUriToFilePath(imageUri);
       console.log('Pro user - analyzing with Groq:', imageFilePath);
@@ -116,12 +122,14 @@ import { useUserStore } from "@/src/hooks/userStore";
 
       console.log('Groq result:', result);
       if (!result.isFood || result.items.length === 0) {
-        throw new Error(result.message || "No food detected in this image. Please take a photo of food.");
+        throw new Error(
+          result.message ||
+            'No food detected in this image. Please take a photo of food.',
+        );
       }
 
-
       router.push({
-        pathname: "/foodReview",
+        pathname: '/foodReview',
         params: {
           items: encodeURIComponent(JSON.stringify(result.items)),
           mealName: encodeURIComponent(result.mealName || ''),
@@ -129,7 +137,7 @@ import { useUserStore } from "@/src/hooks/userStore";
       });
     } catch (error: any) {
       console.error('Error analyzing with Groq:', error);
-      setError(error.message || "Failed to analyze image");
+      setError(error.message || 'Failed to analyze image');
     } finally {
       setAnalyzing(false);
     }
@@ -142,7 +150,7 @@ import { useUserStore } from "@/src/hooks/userStore";
   const analyzeWithLocalModel = async (imageUri: string) => {
     try {
       setAnalyzing(true);
-      setError("");
+      setError('');
 
       const imageFilePath = await convertUriToFilePath(imageUri);
       console.log('Local model - analyzing:', imageFilePath);
@@ -158,17 +166,19 @@ import { useUserStore } from "@/src/hooks/userStore";
         throw new Error('Image file is empty');
       }
 
-      setLoadingMessage("Analyzing your food...");
+      setLoadingMessage('Analyzing your food...');
 
       const result = await identifyFoodFromImage(imageFilePath);
 
       if (!result.isFood || result.items.length === 0) {
-        throw new Error(result.message || "No food detected in this image. Please take a photo of food.");
+        throw new Error(
+          result.message ||
+            'No food detected in this image. Please take a photo of food.',
+        );
       }
-
     } catch (error: any) {
       console.error('Error analyzing with local model:', error);
-      setError(error.message || "Failed to analyze image");
+      setError(error.message || 'Failed to analyze image');
     } finally {
       setAnalyzing(false);
     }
@@ -189,7 +199,7 @@ import { useUserStore } from "@/src/hooks/userStore";
 
     // Non-Pro users - need local model
     if (!isModelDownloaded) {
-      setError("Please download the AI model first from settings.");
+      setError('Please download the AI model first from settings.');
       return;
     }
 
@@ -201,32 +211,39 @@ import { useUserStore } from "@/src/hooks/userStore";
 
     // Initialize model first, then analyze
     setAnalyzing(true);
-    setLoadingMessage("Waking up the AI...");
+    setLoadingMessage('Waking up the AI...');
 
     const initialized = await initializeModelForAnalysis();
 
     if (initialized) {
-      setLoadingMessage("Analyzing your food...");
+      setLoadingMessage('Analyzing your food...');
       analyzeWithLocalModel(imageUri);
     } else {
       setAnalyzing(false);
-      setError("Failed to initialize AI. Please try again.");
+      setError('Failed to initialize AI. Please try again.');
     }
-  }, [imageUri, isPro, isModelDownloaded, isModelReady, initializeModelForAnalysis]);
+  }, [
+    imageUri,
+    isPro,
+    isModelDownloaded,
+    isModelReady,
+    initializeModelForAnalysis,
+  ]);
 
   // Show loading screen during analysis or initialization
   if (analyzing || status === 'initializing') {
-    const message = status === 'initializing' ? downloadMessage : loadingMessage;
-    return <LoadingScreen message={message || "Loading..."} />;
+    const message =
+      status === 'initializing' ? downloadMessage : loadingMessage;
+    return <LoadingScreen message={message || 'Loading...'} />;
   }
 
   // Determine button state
   const canAnalyze = imageUri && (isPro || isModelDownloaded);
   const buttonLabel = isPro
-    ? "ANALYZE (PRO)"
+    ? 'ANALYZE (PRO)'
     : !isModelDownloaded
-      ? "DOWNLOAD MODEL FIRST"
-      : "ANALYZE";
+      ? 'DOWNLOAD MODEL FIRST'
+      : 'ANALYZE';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -270,7 +287,7 @@ import { useUserStore } from "@/src/hooks/userStore";
           style={[
             styles.button,
             isPro && styles.buttonPro,
-            !canAnalyze && styles.buttonDisabled
+            !canAnalyze && styles.buttonDisabled,
           ]}
           onPress={handleAnalyze}
           disabled={!canAnalyze}
@@ -288,16 +305,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     padding: theme.spacing.lg,
-    alignItems: "center",
+    alignItems: 'center',
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
   title: {
-    fontSize: theme.typography.fontSize["3xl"],
+    fontSize: theme.typography.fontSize['3xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
     letterSpacing: theme.typography.letterSpacing.normal,
@@ -317,35 +334,35 @@ const styles = StyleSheet.create({
     letterSpacing: theme.typography.letterSpacing.tight,
   },
   imageContainer: {
-    width: "100%",
+    width: '100%',
     borderRadius: theme.borderRadius.xl,
     borderWidth: theme.borderWidth.thick,
     borderColor: theme.colors.text,
-    overflow: "hidden",
+    overflow: 'hidden',
     marginBottom: theme.spacing.lg,
     ...theme.shadows.md,
   },
   image: {
-    width: "100%",
+    width: '100%',
     height: 350,
   },
   errorContainer: {
-    width: "100%",
+    width: '100%',
     padding: theme.spacing.xl,
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.xl,
     borderWidth: theme.borderWidth.thick,
     borderColor: theme.colors.error,
     marginBottom: theme.spacing.lg,
-    alignItems: "center",
+    alignItems: 'center',
     ...theme.shadows.md,
   },
   errorEmoji: {
-    fontSize: theme.typography.fontSize["6xl"],
+    fontSize: theme.typography.fontSize['6xl'],
     marginBottom: theme.spacing.sm,
   },
   errorTitle: {
-    fontSize: theme.typography.fontSize["2xl"],
+    fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.error,
     marginBottom: theme.spacing.sm,
@@ -354,7 +371,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.textSecondary,
-    textAlign: "center",
+    textAlign: 'center',
     lineHeight: theme.typography.lineHeight.sm,
   },
   button: {
