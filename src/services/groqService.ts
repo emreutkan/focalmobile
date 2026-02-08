@@ -29,13 +29,12 @@ export async function analyzeImageWithGroq(
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
 
     const session = await supabase.auth.getSession();
-    console.log(session.data.session?.access_token);
     const response = await supabase.functions.invoke(
       'groq_image_analysis_service',
       {
         body: { base64image: dataUrl },
         headers: {
-          Authorization: `Bearer ${session.data.session?.access_token.replace(' ', '')}`,
+          Authorization: `Bearer ${session.data.session?.access_token}`,
         },
       },
     );
@@ -66,11 +65,6 @@ export async function analyzeImageWithGroq(
     }
 
     const data = JSON.parse(response.data);
-    console.log('Response data:', data);
-    console.log('Response data items:', data.items);
-    console.log('Response data isFood:', data.isFood);
-    console.log('Response data mealName:', data.mealName);
-    console.log('Response data message:', data.message);
 
     // Validate and filter items
     const items: GroqFoodItem[] = (data.items || [])
@@ -102,12 +96,22 @@ export async function calculateNutritionWithGroq(
   items: { name: string; quantity: string; estimatedGrams: number }[],
 ): Promise<NutritionResult> {
   try {
-    const { data, error } = await supabase.functions.invoke(
+    const session = await supabase.auth.getSession();
+
+    const response = await supabase.functions.invoke(
       'nutrition_calculation_service',
       {
         body: { items },
+        headers: {
+          Authorization: `Bearer ${session.data.session?.access_token}`,
+        },
       },
     );
+    console.log(response);
+    console.log(response.error);
+    console.log(response.data);
+    const error = response.error;
+    const data = response.data;
 
     if (error) {
       const ctx = error.context;
