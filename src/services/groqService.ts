@@ -9,16 +9,17 @@ import {
 } from '../constants/apiConstants';
 /**
  * Analyze food image using Groq's vision model via Supabase Edge Function
- * This is used for Pro users for faster, cloud-based analysis
  */
 export async function analyzeImage(
   imageFilePath: string,
 ): Promise<AI_IMAGE_ANALYSIS_RESPONSE> {
   try {
-    // Convert image to base64
     const base64Image = await imageToBase64(imageFilePath);
     const mimeType = getImageMimeType(imageFilePath);
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
+
+    const payloadMB = (dataUrl.length * 0.75) / (1024 * 1024);
+    console.log(`[analyzeImage] payload: ${payloadMB.toFixed(2)} MB`);
 
     const session = await supabase.auth.getSession();
     const response = await supabase.functions.invoke(
@@ -31,6 +32,10 @@ export async function analyzeImage(
       },
     );
 
+    if (response.error) {
+      throw new Error(`Edge Function error: ${response.error.message}`);
+    }
+
     const data =
       typeof response.data === 'string'
         ? JSON.parse(response.data)
@@ -38,39 +43,35 @@ export async function analyzeImage(
 
     const result = AiImageAnalysisResponseSchme.safeParse(data);
     if (!result.success) {
-      console.error('Invalid response from Edge Function:', data);
       throw new Error(
-        `API error: ${response.error?.message ?? 'Invalid response format'}`,
+        `Invalid response: ${JSON.stringify(result.error.issues)}`,
       );
     }
     const parsed = result.data;
 
-    // Validate and filter items
     const items: AI_IMAGE_ANALYSIS_FOOD_ITEM[] = (parsed.items || [])
       .map((item: any) => ({
         name: String(item.name || '').trim(),
         estimatedGrams: Number(item.estimatedGrams) || 0,
-      })) // converts item to AI_IMAGE_ANALYSIS_FOOD_ITEM
+      }))
       .filter(
         (item: AI_IMAGE_ANALYSIS_FOOD_ITEM) =>
           item.name.length > 0 && item.estimatedGrams > 0,
-      ); // clears out items with no name or grams lower than 1
+      );
 
-    const returnValue: AI_IMAGE_ANALYSIS_RESPONSE = {
+    return {
       isFood: parsed.isFood,
       mealName: parsed.mealName,
       items,
       message: parsed.message,
     };
-    return returnValue;
   } catch (error: any) {
-    console.error('Error analyzing with Groq:', error);
-    throw new Error(`Failed to analyze image using API: ${error}`);
+    console.error(`[analyzeImage] FAILED: ${error.message}`);
+    throw error;
   }
 }
 /**
  * Calculate nutrition for food items using Groq's text model via Supabase Edge Function
- * This is used for Pro users for faster, cloud-based nutrition analysis
  */
 export async function calculateNutrition(
   items: { name: string; quantity: string; estimatedGrams: number }[],
@@ -87,6 +88,11 @@ export async function calculateNutrition(
         },
       },
     );
+
+    if (response.error) {
+      throw new Error(`Edge Function error: ${response.error.message}`);
+    }
+
     const data =
       typeof response.data === 'string'
         ? JSON.parse(response.data)
@@ -94,27 +100,14 @@ export async function calculateNutrition(
 
     const result = NutritionCalculationResponseSchme.safeParse(data);
     if (!result.success) {
-      console.error('Invalid response from Edge Function:', data);
       throw new Error(
-        `API error: ${response.error?.message ?? 'Invalid response format'}`,
+        `Invalid response: ${JSON.stringify(result.error.issues)}`,
       );
     }
-    const parsed = result.data;
 
-    const returnValue: NUTRITION_CALCULATION_RESPONSE = {
-      healthScore: parsed.healthScore,
-      reasoning: parsed.reasoning,
-      badIngredients: parsed.badIngredients,
-      goodIngredients: parsed.goodIngredients,
-      foodItems: parsed.foodItems,
-    };
-    return returnValue;
+    return result.data;
   } catch (error: any) {
-    console.error('Groq nutrition calculation error:', error);
-    throw new Error(
-      `Failed to calculate nutrition with Groq: ${error.message}`,
-    );
+    console.error(`[calculateNutrition] FAILED: ${error.message}`);
+    throw error;
   }
 }
-
-// export async function saveMeal();

@@ -49,7 +49,7 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
 
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
-          quality: 0.5,
+          quality: 1,
         });
 
         if (!result.canceled && result.assets[0]) {
@@ -84,9 +84,8 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
 
         const result = await ImagePicker.launchCameraAsync({
           mediaTypes: ['images'],
-          quality: 0.5,
+          quality: 1,
         });
-
 
         if (!result.canceled && result.assets[0]) {
           await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

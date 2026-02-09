@@ -31,7 +31,7 @@ export default function ImageAnalyzer() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.5,
+        quality: 1,
       });
 
       if (!result.canceled && result.assets[0]) {
