@@ -1,27 +1,19 @@
 import { imageToBase64, getImageMimeType } from '../utils/imageUtils';
-import { NutritionResult } from '../services/databaseService';
 import { supabase } from '../lib/supabase';
-
-export interface GroqFoodItem {
-  name: string;
-  quantity: string;
-  estimatedGrams: number;
-}
-
-export interface GroqFoodIdentificationResult {
-  isFood: boolean;
-  mealName?: string;
-  items: GroqFoodItem[];
-  message?: string;
-}
-
+import {
+  AI_IMAGE_ANALYSIS_RESPONSE,
+  AI_IMAGE_ANALYSIS_FOOD_ITEM,
+  AiImageAnalysisResponseSchme,
+  NUTRITION_CALCULATION_RESPONSE,
+  NutritionCalculationResponseSchme,
+} from '../constants/apiConstants';
 /**
  * Analyze food image using Groq's vision model via Supabase Edge Function
  * This is used for Pro users for faster, cloud-based analysis
  */
-export async function analyzeImageWithGroq(
+export async function analyzeImage(
   imageFilePath: string,
-): Promise<GroqFoodIdentificationResult> {
+): Promise<AI_IMAGE_ANALYSIS_RESPONSE> {
   try {
     // Convert image to base64
     const base64Image = await imageToBase64(imageFilePath);
@@ -39,50 +31,30 @@ export async function analyzeImageWithGroq(
       },
     );
 
-    if (response.error) {
-      // context is the raw Response object for FunctionsHttpError
-      const ctx = response.error.context;
-      const status = ctx?.status;
-      const statusText = ctx?.statusText || '';
-      console.error(
-        `Supabase function error [${status} ${statusText}]:`,
-        response.error.message,
-      );
-      throw new Error(
-        `API error [${status || 'unknown'} ${statusText}]: ${response.error.message}`,
-      );
+    if (!AiImageAnalysisResponseSchme.safeParse(response.data).success) {
+      console.error('Invalid response from Edge Function:', response.data);
+      throw new Error(`API error [${response.error.message}`);
     }
-
-    if (!response.data) {
-      throw new Error('No data returned from Edge Function');
-    }
-
-    console.log('Edge Function response data:', response.data);
-
-    // Check if the response indicates an error
-    if (response.data.error) {
-      throw new Error(`Edge Function error: ${response.data.error}`);
-    }
-
-    const data = JSON.parse(response.data);
+    const parsed = AiImageAnalysisResponseSchme.parse(response.data);
 
     // Validate and filter items
-    const items: GroqFoodItem[] = (data.items || [])
+    const items: AI_IMAGE_ANALYSIS_FOOD_ITEM[] = (parsed.items || [])
       .map((item: any) => ({
         name: String(item.name || '').trim(),
-        quantity: String(item.quantity || '1 serving'),
         estimatedGrams: Number(item.estimatedGrams) || 0,
-      }))
+      })) // converts item to AI_IMAGE_ANALYSIS_FOOD_ITEM
       .filter(
-        (item: GroqFoodItem) => item.name.length > 0 && item.estimatedGrams > 0,
-      );
+        (item: AI_IMAGE_ANALYSIS_FOOD_ITEM) =>
+          item.name.length > 0 && item.estimatedGrams > 0,
+      ); // clears out items with no name or grams lower than 1
 
-    return {
-      isFood: data.isFood !== false,
-      mealName: data.mealName || 'Unknown Meal',
+    const returnValue: AI_IMAGE_ANALYSIS_RESPONSE = {
+      isFood: parsed.isFood,
+      mealName: parsed.mealName,
       items,
-      message: data.message,
+      message: parsed.message,
     };
+    return returnValue;
   } catch (error: any) {
     console.error('Error analyzing with Groq:', error);
     throw new Error(`Failed to analyze image using API: ${error}`);
@@ -92,9 +64,9 @@ export async function analyzeImageWithGroq(
  * Calculate nutrition for food items using Groq's text model via Supabase Edge Function
  * This is used for Pro users for faster, cloud-based nutrition analysis
  */
-export async function calculateNutritionWithGroq(
+export async function calculateNutrition(
   items: { name: string; quantity: string; estimatedGrams: number }[],
-): Promise<NutritionResult> {
+): Promise<NUTRITION_CALCULATION_RESPONSE> {
   try {
     const session = await supabase.auth.getSession();
 
@@ -107,70 +79,20 @@ export async function calculateNutritionWithGroq(
         },
       },
     );
-    console.log(response);
-    console.log(response.error);
-    console.log(response.data);
-    const error = response.error;
-    const data = response.data;
-
-    if (error) {
-      const ctx = error.context;
-      const status = ctx?.status;
-      const statusText = ctx?.statusText || '';
-      console.error(
-        `Supabase function error [${status} ${statusText}]:`,
-        error.message,
-      );
-      throw new Error(
-        `API error [${status || 'unknown'} ${statusText}]: ${error.message}`,
-      );
+    if (!NutritionCalculationResponseSchme.safeParse(response.data).success) {
+      console.error('Invalid response from Edge Function:', response.data);
+      throw new Error(`API error [${response.error.message}`);
     }
+    const parsed = NutritionCalculationResponseSchme.parse(response.data);
 
-    if (!data) {
-      throw new Error('No data returned from nutrition calculation');
-    }
-
-    // Validate that we have foodItems array
-    if (!Array.isArray(data.foodItems) || data.foodItems.length === 0) {
-      console.error('Invalid foodItems structure from Groq:', data);
-      throw new Error('Invalid nutrition data structure from Groq');
-    }
-
-    // Transform the response to match our NutritionResult interface
-    return {
-      healthScore: data.healthScore || 0,
-      reasoning: data.reasoning || 'No reasoning provided.',
-      badIngredients: Array.isArray(data.badIngredients)
-        ? data.badIngredients
-        : [],
-      goodIngredients: Array.isArray(data.goodIngredients)
-        ? data.goodIngredients
-        : [],
-      foodItems: data.foodItems.map((item: any) => ({
-        itemName: item.itemName || 'Unknown',
-        amountGrams: item.amountGrams || 0,
-        macros: {
-          protein: item.macros?.protein || 0,
-          carbs: item.macros?.carbs || 0,
-          fat: item.macros?.fat || 0,
-          calories: item.macros?.calories || 0,
-          fiber: item.macros?.fiber || 0,
-          sugar: item.macros?.sugar || 0,
-          saturatedFat: item.macros?.saturatedFat || 0,
-          monounsaturatedFat: item.macros?.monounsaturatedFat || 0,
-          transFat: item.macros?.transFat || 0,
-          sodium: item.macros?.sodium || 0,
-          cholesterol: item.macros?.cholesterol || 0,
-        },
-        micros: Array.isArray(item.micros)
-          ? item.micros.map((micro: any) => ({
-              name: micro.name || '',
-              amount: micro.amount || 0,
-              unit: micro.unit || 'mg',
-            }))
-          : [],
-      })),
+    const returnValue: NUTRITION_CALCULATION_RESPONSE = {
+      healthScore: parsed.healthScore,
+      reasoning: parsed.reasoning,
+      badIngredients: parsed.badIngredients,
+      goodIngredients: parsed.goodIngredients,
+      foodItems: parsed.foodItems,
     };
+    return returnValue;
   } catch (error: any) {
     console.error('Groq nutrition calculation error:', error);
     throw new Error(
@@ -178,3 +100,5 @@ export async function calculateNutritionWithGroq(
     );
   }
 }
+
+// export async function saveMeal();

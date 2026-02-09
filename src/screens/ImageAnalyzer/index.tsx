@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import RNFS from 'react-native-fs';
 import LoadingScreen from '@/src/components/LoadingScreen';
 import { identifyFoodFromImage } from '@/src/utils/foodIdentifier';
-import { analyzeImageWithGroq } from '@/src/services/groqService';
+import { analyzeImage } from '@/src/services/groqService';
 import { useModel } from '@/src/contexts/ModelContext';
 import { useUserStore } from '@/src/hooks/userStore';
 export default function ImageAnalyzer() {
@@ -36,15 +36,23 @@ export default function ImageAnalyzer() {
       // For Pro users - analyze immediately with Groq
       if (isPro) {
         setHasAnalyzed(true);
-        analyzeWithGroq(imageUri);
-      }
-      // For non-Pro users with model ready - analyze immediately
-      else if (isModelReady) {
+      } else if (isModelReady) {
         setHasAnalyzed(true);
-        analyzeWithLocalModel(imageUri);
+        identifyFoodFromImage(imageUri);
+      } else {
+        setError('Please download the AI model first from settings.');
       }
     }
-  }, [isPro, isModelReady, imageUri, analyzing, hasAnalyzed, error]);
+  }, [
+    isPro,
+    isModelReady,
+    imageUri,
+    analyzing,
+    hasAnalyzed,
+    error,
+    identifyFoodFromImage,
+    analyzeImage,
+  ]);
 
   const convertUriToFilePath = async (uri: string): Promise<string> => {
     // If it's already a file path, verify it exists
@@ -106,83 +114,6 @@ export default function ImageAnalyzer() {
   };
 
   /**
-   * Analyze with Groq API (Pro users)
-   * Fast, cloud-based analysis
-   */
-  const analyzeWithGroq = async (imageUri: string) => {
-    try {
-      setAnalyzing(true);
-      setLoadingMessage('Analyzing with cloud AI...');
-      setError('');
-
-      const imageFilePath = await convertUriToFilePath(imageUri);
-      console.log('Pro user - analyzing with Groq:', imageFilePath);
-
-      const result = await analyzeImageWithGroq(imageFilePath);
-
-      console.log('Groq result:', result);
-      if (!result.isFood || result.items.length === 0) {
-        throw new Error(
-          result.message ||
-            'No food detected in this image. Please take a photo of food.',
-        );
-      }
-
-      router.push({
-        pathname: '/foodReview',
-        params: {
-          items: encodeURIComponent(JSON.stringify(result.items)),
-          mealName: encodeURIComponent(result.mealName || ''),
-        },
-      });
-    } catch (error: any) {
-      console.error('Error analyzing with Groq:', error);
-      setError(error.message || 'Failed to analyze image');
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
-  /**
-   * Analyze with local model (non-Pro users)
-   * Requires model to be initialized first
-   */
-  const analyzeWithLocalModel = async (imageUri: string) => {
-    try {
-      setAnalyzing(true);
-      setError('');
-
-      const imageFilePath = await convertUriToFilePath(imageUri);
-      console.log('Local model - analyzing:', imageFilePath);
-
-      // Verify file exists
-      const fileExists = await RNFS.exists(imageFilePath);
-      if (!fileExists) {
-        throw new Error(`Image file does not exist: ${imageFilePath}`);
-      }
-
-      const stats = await RNFS.stat(imageFilePath);
-      if (stats.size === 0) {
-        throw new Error('Image file is empty');
-      }
-
-      setLoadingMessage('Analyzing your food...');
-
-      const result = await identifyFoodFromImage(imageFilePath);
-
-      if (!result.isFood || result.items.length === 0) {
-        throw new Error(
-          result.message ||
-            'No food detected in this image. Please take a photo of food.',
-        );
-      }
-    } catch (error: any) {
-      console.error('Error analyzing with local model:', error);
-      setError(error.message || 'Failed to analyze image');
-    } finally {
-      setAnalyzing(false);
-    }
-  };
 
   /**
    * Handle analyze button press
@@ -193,19 +124,13 @@ export default function ImageAnalyzer() {
 
     // Pro users - use Groq API
     if (isPro) {
-      analyzeWithGroq(imageUri);
+      analyzeImage(imageUri);
       return;
     }
 
     // Non-Pro users - need local model
     if (!isModelDownloaded) {
       setError('Please download the AI model first from settings.');
-      return;
-    }
-
-    // If model already initialized, analyze directly
-    if (isModelReady) {
-      analyzeWithLocalModel(imageUri);
       return;
     }
 
@@ -217,7 +142,6 @@ export default function ImageAnalyzer() {
 
     if (initialized) {
       setLoadingMessage('Analyzing your food...');
-      analyzeWithLocalModel(imageUri);
     } else {
       setAnalyzing(false);
       setError('Failed to initialize AI. Please try again.');

@@ -210,5 +210,4 @@ export const GOOD_INGREDIENTS = [
 
 export type Macronutrient = (typeof MACRONUTRIENTS)[number];
 export type Micronutrient = (typeof MICRONUTRIENTS)[number];
-export type BadIngredient = (typeof BAD_INGREDIENTS)[number];
 export type GoodIngredient = (typeof GOOD_INGREDIENTS)[number];

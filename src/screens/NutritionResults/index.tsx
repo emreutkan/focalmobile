@@ -12,7 +12,7 @@ import { theme } from '@/src/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FoodItem } from '@/src/components/ReviewItems';
 import { Ionicons } from '@expo/vector-icons';
-import { NutritionResult, saveMeal } from '@/src/services/databaseService';
+import { NutritionResult, saveMeal } from '@/src/services/groqService';
 
 export default function NutritionResultsScreen() {
   const {
@@ -24,7 +24,6 @@ export default function NutritionResultsScreen() {
     foodItems: string;
     mealName: string;
   }>();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -59,12 +58,10 @@ export default function NutritionResultsScreen() {
         undefined, // Add imagePath if you have it
       );
 
-      console.log('Meal saved with ID:', mealId);
-
       setSaved(true);
-      Alert.alert('Saved', 'Meal logged successfully!', [
-        { text: 'OK', onPress: () => router.replace('/') },
-      ]);
+      // Alert.alert('Saved', 'Meal logged successfully!', [
+      //   { text: 'OK', onPress: () => router.replace('/') },
+      // ]);
     } catch (error) {
       console.error('Error saving meal:', error);
       Alert.alert('Error', 'Failed to save meal. Please try again.');
@@ -73,9 +70,9 @@ export default function NutritionResultsScreen() {
     }
   };
 
-  const handleDiscard = () => {
-    router.replace('/');
-  };
+  // const handleDiscard = () => {
+  //   router.replace('/');
+  // };
 
   if (!nutrition) {
     return (

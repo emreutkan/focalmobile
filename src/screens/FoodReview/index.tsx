@@ -1,13 +1,13 @@
-import React, { useState } from "react";
-import { View, StyleSheet } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import ReviewItems, { FoodItem } from "@/src/components/ReviewItems";
-import { calculateNutrition } from "@/src/utils/nutritionCalculator";
-import { calculateNutritionWithGroq } from "@/src/services/groqService";
-import { useUserStore } from "@/src/hooks/userStore";
-import LoadingScreen from "@/src/components/LoadingScreen";
-import { theme } from "@/src/theme";
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ReviewItems, { FoodItem } from '@/src/components/ReviewItems';
+import { calculateNutrition } from '@/src/utils/nutritionCalculator';
+import { calculateNutrition } from '@/src/services/groqService';
+import { useUserStore } from '@/src/hooks/userStore';
+import LoadingScreen from '@/src/components/LoadingScreen';
+import { theme } from '@/src/theme';
 
 export default function FoodReviewScreen() {
   const { items: itemsParam, mealName: mealNameParam } = useLocalSearchParams<{
@@ -34,14 +34,18 @@ export default function FoodReviewScreen() {
   const [calculating, setCalculating] = useState(false);
   const isPro = useUserStore((state) => state.isPro);
 
-  const handleUpdateItem = (index: number, field: keyof FoodItem, value: string | number) => {
+  const handleUpdateItem = (
+    index: number,
+    field: keyof FoodItem,
+    value: string | number,
+  ) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     setItems(newItems);
   };
 
   const handleAddItem = () => {
-    setItems([...items, { name: "", quantity: "", estimatedGrams: 0 }]);
+    setItems([...items, { name: '', quantity: '', estimatedGrams: 0 }]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -54,17 +58,20 @@ export default function FoodReviewScreen() {
     }
 
     try {
-      console.log('Items being sent to nutrition calculator:', JSON.stringify(items, null, 2));
-      
+      console.log(
+        'Items being sent to nutrition calculator:',
+        JSON.stringify(items, null, 2),
+      );
+
       setCalculating(true);
       const nutritionResult = isPro
-        ? await calculateNutritionWithGroq(items)
+        ? await calculateNutrition(items)
         : await calculateNutrition(items);
-      
+
       console.log('Nutrition calculation completed, navigating to results...');
-      
+
       router.push({
-        pathname: "/nutritionResults",
+        pathname: '/nutritionResults',
         params: {
           nutritionData: encodeURIComponent(JSON.stringify(nutritionResult)),
           foodItems: encodeURIComponent(JSON.stringify(items)),
@@ -72,7 +79,7 @@ export default function FoodReviewScreen() {
         },
       });
     } catch (error: any) {
-      console.error("Error calculating nutrition:", error);
+      console.error('Error calculating nutrition:', error);
       setCalculating(false);
     }
   };
