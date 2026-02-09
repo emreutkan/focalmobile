@@ -3,7 +3,6 @@ import * as FileSystem from 'expo-file-system/legacy';
  * Convert image file to base64
  */
 export async function imageToBase64(imagePath: string): Promise<string> {
-  // Ensure file:// prefix for expo-file-system
   const uri = imagePath.startsWith('file://')
     ? imagePath
     : `file://${imagePath}`;
