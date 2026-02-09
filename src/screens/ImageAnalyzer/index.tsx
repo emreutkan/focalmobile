@@ -4,180 +4,64 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { theme } from '@/src/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import RNFS from 'react-native-fs';
 import LoadingScreen from '@/src/components/LoadingScreen';
-import { identifyFoodFromImage } from '@/src/utils/foodIdentifier';
 import { analyzeImage } from '@/src/services/groqService';
-import { useModel } from '@/src/contexts/ModelContext';
-import { useUserStore } from '@/src/hooks/userStore';
+
 export default function ImageAnalyzer() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const isPro = useUserStore((state) => state.isPro);
-  const {
-    isModelDownloaded,
-    isModelReady,
-    initializeModelForAnalysis,
-    status,
-    downloadMessage,
-  } = useModel();
 
   const [analyzing, setAnalyzing] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState(
-    'Analyzing your food...',
-  );
   const [error, setError] = useState<string>('');
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
 
-  // Auto-analyze when entering screen (if Pro or model ready)
-  useEffect(() => {
-    if (imageUri && !analyzing && !hasAnalyzed && !error) {
-      // For Pro users - analyze immediately with Groq
-      if (isPro) {
-        setHasAnalyzed(true);
-      } else if (isModelReady) {
-        setHasAnalyzed(true);
-        identifyFoodFromImage(imageUri);
-      } else {
-        setError('Please download the AI model first from settings.');
-      }
-    }
-  }, [
-    isPro,
-    isModelReady,
-    imageUri,
-    analyzing,
-    hasAnalyzed,
-    error,
-    identifyFoodFromImage,
-    analyzeImage,
-  ]);
-
-  const convertUriToFilePath = async (uri: string): Promise<string> => {
-    // If it's already a file path, verify it exists
-    if (uri.startsWith('/')) {
-      const exists = await RNFS.exists(uri);
-      if (!exists) {
-        throw new Error(`Image file not found at: ${uri}`);
-      }
-      return uri;
-    }
-
-    // Convert file:// URI to file path
-    if (uri.startsWith('file://')) {
-      const filePath = uri.replace('file://', '');
-      const exists = await RNFS.exists(filePath);
-      if (!exists) {
-        throw new Error(`Image file not found at: ${filePath}`);
-      }
-      return filePath;
-    }
-
-    // For Android content:// URIs, copy to a temp file
-    if (uri.startsWith('content://')) {
-      const filename = uri.split('/').pop() || 'image.jpg';
-      const destPath = `${RNFS.CachesDirectoryPath}/${filename}`;
-      try {
-        await RNFS.copyFile(uri, destPath);
-        const exists = await RNFS.exists(destPath);
-        if (!exists) {
-          throw new Error('Failed to copy image file');
-        }
-        return destPath;
-      } catch (err: any) {
-        throw new Error(
-          `Failed to copy image from content URI: ${err.message || err}`,
-        );
-      }
-    }
-
-    // For other URIs (http/https), download to temp file
-    const filename = uri.split('/').pop()?.split('?')[0] || 'image.jpg';
-    const destPath = `${RNFS.CachesDirectoryPath}/${filename}`;
-    const downloadResult = await RNFS.downloadFile({
-      fromUrl: uri,
-      toFile: destPath,
-    }).promise;
-
-    if (downloadResult.statusCode === 200) {
-      const exists = await RNFS.exists(destPath);
-      if (!exists) {
-        throw new Error('Downloaded file not found');
-      }
-      return destPath;
-    }
-
-    throw new Error(
-      `Failed to download image: status ${downloadResult.statusCode}`,
-    );
-  };
-
-  /**
-
-  /**
-   * Handle analyze button press
-   * For non-Pro users, initializes model first if needed
-   */
   const handleAnalyze = useCallback(async () => {
-    if (!imageUri) return;
+    if (!imageUri || analyzing) return;
 
-    // Pro users - use Groq API
-    if (isPro) {
-      analyzeImage(imageUri);
-      return;
-    }
-
-    // Non-Pro users - need local model
-    if (!isModelDownloaded) {
-      setError('Please download the AI model first from settings.');
-      return;
-    }
-
-    // Initialize model first, then analyze
     setAnalyzing(true);
-    setLoadingMessage('Waking up the AI...');
+    setError('');
 
-    const initialized = await initializeModelForAnalysis();
+    try {
+      const result = await analyzeImage(imageUri);
 
-    if (initialized) {
-      setLoadingMessage('Analyzing your food...');
-    } else {
+      if (!result.isFood) {
+        setError(result.message || 'No food detected in this image.');
+        setAnalyzing(false);
+        return;
+      }
+
+      router.push({
+        pathname: '/foodReview',
+        params: {
+          items: encodeURIComponent(JSON.stringify(result.items)),
+          mealName: encodeURIComponent(result.mealName || ''),
+        },
+      });
+    } catch (err: any) {
+      console.error('Error analyzing image:', err);
+      setError(err.message || 'Failed to analyze image. Please try again.');
+    } finally {
       setAnalyzing(false);
-      setError('Failed to initialize AI. Please try again.');
     }
-  }, [
-    imageUri,
-    isPro,
-    isModelDownloaded,
-    isModelReady,
-    initializeModelForAnalysis,
-  ]);
+  }, [imageUri, analyzing, router]);
 
-  // Show loading screen during analysis or initialization
-  if (analyzing || status === 'initializing') {
-    const message =
-      status === 'initializing' ? downloadMessage : loadingMessage;
-    return <LoadingScreen message={message || 'Loading...'} />;
+  // Auto-analyze when entering screen
+  useEffect(() => {
+    if (imageUri && !hasAnalyzed && !error) {
+      setHasAnalyzed(true);
+      handleAnalyze();
+    }
+  }, [imageUri, hasAnalyzed, error, handleAnalyze]);
+
+  if (analyzing) {
+    return <LoadingScreen message="Analyzing your food..." />;
   }
-
-  // Determine button state
-  const canAnalyze = imageUri && (isPro || isModelDownloaded);
-  const buttonLabel = isPro
-    ? 'ANALYZE (PRO)'
-    : !isModelDownloaded
-      ? 'DOWNLOAD MODEL FIRST'
-      : 'ANALYZE';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>ANALYZING</Text>
-        {isPro && (
-          <View style={styles.proBadge}>
-            <Text style={styles.proBadgeText}>PRO</Text>
-          </View>
-        )}
       </View>
 
       {imageUri && (
@@ -208,16 +92,12 @@ export default function ImageAnalyzer() {
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
-          style={[
-            styles.button,
-            isPro && styles.buttonPro,
-            !canAnalyze && styles.buttonDisabled,
-          ]}
+          style={styles.button}
           onPress={handleAnalyze}
-          disabled={!canAnalyze}
+          disabled={!imageUri}
           activeOpacity={0.8}
         >
-          <Text style={styles.buttonText}>{buttonLabel}</Text>
+          <Text style={styles.buttonText}>ANALYZE</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -242,20 +122,6 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
     letterSpacing: theme.typography.letterSpacing.normal,
-  },
-  proBadge: {
-    backgroundColor: theme.colors.pro,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: theme.borderWidth.base,
-    borderColor: theme.colors.text,
-  },
-  proBadgeText: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.tight,
   },
   imageContainer: {
     width: '100%',
@@ -306,13 +172,6 @@ const styles = StyleSheet.create({
     borderWidth: theme.borderWidth.thick,
     borderColor: theme.colors.text,
     ...theme.shadows.md,
-  },
-  buttonPro: {
-    backgroundColor: theme.colors.pro,
-  },
-  buttonDisabled: {
-    backgroundColor: theme.colors.textTertiary,
-    opacity: 0.6,
   },
   buttonText: {
     color: theme.colors.text,

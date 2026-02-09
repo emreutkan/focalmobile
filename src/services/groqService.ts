@@ -31,11 +31,19 @@ export async function analyzeImage(
       },
     );
 
-    if (!AiImageAnalysisResponseSchme.safeParse(response.data).success) {
-      console.error('Invalid response from Edge Function:', response.data);
-      throw new Error(`API error [${response.error.message}`);
+    const data =
+      typeof response.data === 'string'
+        ? JSON.parse(response.data)
+        : response.data;
+
+    const result = AiImageAnalysisResponseSchme.safeParse(data);
+    if (!result.success) {
+      console.error('Invalid response from Edge Function:', data);
+      throw new Error(
+        `API error: ${response.error?.message ?? 'Invalid response format'}`,
+      );
     }
-    const parsed = AiImageAnalysisResponseSchme.parse(response.data);
+    const parsed = result.data;
 
     // Validate and filter items
     const items: AI_IMAGE_ANALYSIS_FOOD_ITEM[] = (parsed.items || [])
@@ -79,11 +87,19 @@ export async function calculateNutrition(
         },
       },
     );
-    if (!NutritionCalculationResponseSchme.safeParse(response.data).success) {
-      console.error('Invalid response from Edge Function:', response.data);
-      throw new Error(`API error [${response.error.message}`);
+    const data =
+      typeof response.data === 'string'
+        ? JSON.parse(response.data)
+        : response.data;
+
+    const result = NutritionCalculationResponseSchme.safeParse(data);
+    if (!result.success) {
+      console.error('Invalid response from Edge Function:', data);
+      throw new Error(
+        `API error: ${response.error?.message ?? 'Invalid response format'}`,
+      );
     }
-    const parsed = NutritionCalculationResponseSchme.parse(response.data);
+    const parsed = result.data;
 
     const returnValue: NUTRITION_CALCULATION_RESPONSE = {
       healthScore: parsed.healthScore,

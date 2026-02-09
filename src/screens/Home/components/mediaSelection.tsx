@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import CardComponent from "@/src/components/Cards/cardComponent";
 
 
 
@@ -48,8 +49,6 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
 
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [4, 3],
           quality: 0.8,
         });
 
@@ -85,8 +84,6 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
 
         const result = await ImagePicker.launchCameraAsync({
           mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [4, 3],
           quality: 0.8,
         });
 
@@ -113,57 +110,61 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
         <Text style={styles.pickerSubtitle}>Choose how to capture</Text>
 
         <View style={styles.pickerOptions}>
-          <TouchableOpacity
-            style={styles.pickerOption}
-            onPress={handleCameraSelect}
-            activeOpacity={0.8}
-          >
-            <View style={[
-              styles.pickerIconBox,
-              { backgroundColor: cameraPermission === false ? theme.colors.surface : '#4ecdc4' }
-            ]}>
-              <Ionicons
-                name={cameraPermission === false ? "camera-outline" : "camera"}
-                size={40}
-                color={cameraPermission === false ? theme.colors.textTertiary : theme.colors.text}
-              />
-              {cameraPermission === false && (
-                <View style={styles.permissionBadge}>
-                  <Ionicons name="lock-closed" size={14} color="#fff" />
-                </View>
-              )}
-            </View>
+          <View style={styles.pickerOption}>
+            <CardComponent
+              height={100}
+              width={120}
+              backgroundColor={cameraPermission === false ? theme.colors.surface : '#4ecdc4'}
+              onPress={handleCameraSelect}
+              showShadow={true}
+              showBorder={true}
+            >
+              <View style={styles.pickerIconContent}>
+                <Ionicons
+                  name={cameraPermission === false ? "camera-outline" : "camera"}
+                  size={40}
+                  color={cameraPermission === false ? theme.colors.textTertiary : theme.colors.text}
+                />
+                {cameraPermission === false && (
+                  <View style={styles.permissionBadge}>
+                    <Ionicons name="lock-closed" size={14} color="#fff" />
+                  </View>
+                )}
+              </View>
+            </CardComponent>
             <Text style={[
               styles.pickerOptionText,
               cameraPermission === false && styles.pickerOptionTextDisabled
             ]}>CAMERA</Text>
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={styles.pickerOption}
-            onPress={handleGallerySelect}
-            activeOpacity={0.8}
-          >
-            <View style={[
-              styles.pickerIconBox,
-              { backgroundColor: galleryPermission === false ? theme.colors.surface : '#FFE66D' }
-            ]}>
-              <Ionicons
-                name={galleryPermission === false ? "images-outline" : "images"}
-                size={40}
-                color={galleryPermission === false ? theme.colors.textTertiary : theme.colors.text}
-              />
-              {galleryPermission === false && (
-                <View style={styles.permissionBadge}>
-                  <Ionicons name="lock-closed" size={14} color="#fff" />
-                </View>
-              )}
-            </View>
+          <View style={styles.pickerOption}>
+            <CardComponent
+              height={100}
+              width={120}
+              backgroundColor={galleryPermission === false ? theme.colors.surface : '#FFE66D'}
+              onPress={handleGallerySelect}
+              showShadow={true}
+              showBorder={true}
+            >
+              <View style={styles.pickerIconContent}>
+                <Ionicons
+                  name={galleryPermission === false ? "images-outline" : "images"}
+                  size={40}
+                  color={galleryPermission === false ? theme.colors.textTertiary : theme.colors.text}
+                />
+                {galleryPermission === false && (
+                  <View style={styles.permissionBadge}>
+                    <Ionicons name="lock-closed" size={14} color="#fff" />
+                  </View>
+                )}
+              </View>
+            </CardComponent>
             <Text style={[
               styles.pickerOptionText,
               galleryPermission === false && styles.pickerOptionTextDisabled
             ]}>GALLERY</Text>
-          </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -195,6 +196,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 4,
     borderColor: theme.colors.text,
+    shadowColor: theme.colors.text,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
   },
   pickerTitle: {
     fontSize: theme.typography.fontSize['2xl'],
@@ -217,15 +223,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
-  pickerIconBox: {
-    width: 100,
-    height: 100,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: 4,
-    borderColor: theme.colors.text,
+  pickerIconContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    ...theme.shadows.md,
   },
   pickerOptionText: {
     fontSize: theme.typography.fontSize.sm,

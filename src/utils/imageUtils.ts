@@ -1,14 +1,16 @@
-import RNFS from "react-native-fs";
+import * as FileSystem from 'expo-file-system/legacy';
 /**
  * Convert image file to base64
  */
 export async function imageToBase64(imagePath: string): Promise<string> {
-  // Remove file:// prefix if present
-  const cleanPath = imagePath.replace('file://', '');
+  // Ensure file:// prefix for expo-file-system
+  const uri = imagePath.startsWith('file://')
+    ? imagePath
+    : `file://${imagePath}`;
 
-  // Read file as base64
-
-  const base64 = await RNFS.readFile(cleanPath, 'base64');
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
   return base64;
 }
 
@@ -30,4 +32,3 @@ export function getImageMimeType(imagePath: string): string {
       return 'image/jpeg';
   }
 }
-

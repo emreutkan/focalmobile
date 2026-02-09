@@ -1,16 +1,3 @@
-export const Models = {
-  main: {
-    name: 'llava-phi-3-mini-int4.gguf',
-    url: 'https://huggingface.co/xtuner/llava-phi-3-mini-gguf/resolve/main/llava-phi-3-mini-int4.gguf',
-    size: 2.32 * 1024 * 1024 * 1024,
-  },
-  mmproj: {
-    name: 'llava-phi-3-mini-mmproj-f16.gguf',
-    url: 'https://huggingface.co/xtuner/llava-phi-3-mini-gguf/resolve/main/llava-phi-3-mini-mmproj-f16.gguf',
-    size: 600 * 1024 * 1024, // ~600MB
-  },
-};
-
 // ============================================
 // NUTRITION REFERENCE LISTS
 // AI uses these to identify nutrients in food
