@@ -16,32 +16,31 @@ interface MediaSelectionProps {
   setGalleryPermission: (permission: boolean) => void;
   setShowPermissionModal: (show: boolean) => void;
   setShowMediaSelection: (show: boolean) => void;
+  setPermissionType: (type: 'camera' | 'gallery' | 'both' | 'none') => void;
 }
 
-export function MediaSelection({ setSelectedImage, cameraPermission, galleryPermission, setCameraPermission, setGalleryPermission, setShowPermissionModal, setShowMediaSelection }: MediaSelectionProps) {
- 
+export function MediaSelection({ setSelectedImage, cameraPermission, galleryPermission, setCameraPermission, setGalleryPermission, setShowPermissionModal, setShowMediaSelection, setPermissionType }: MediaSelectionProps) {
+
     const handleGallerySelect = useCallback(async () => {
 
       try {
         const currentPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
- 
-        if (currentPermission.accessPrivileges === 'none') {
-          setGalleryPermission(false);
-          setShowMediaSelection(false);
-          setShowPermissionModal(true);
-          return;
-        }
+
         if (!currentPermission.granted) {
           if (currentPermission.canAskAgain) {
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permission.granted) {
               setGalleryPermission(false);
+              setPermissionType('gallery');
+              setShowMediaSelection(false);
               setShowPermissionModal(true);
               return;
             }
             setGalleryPermission(true);
           } else {
             setGalleryPermission(false);
+            setPermissionType('gallery');
+            setShowMediaSelection(false);
             setShowPermissionModal(true);
             return;
           }
@@ -71,12 +70,16 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
             const permission = await ImagePicker.requestCameraPermissionsAsync();
             if (!permission.granted) {
               setCameraPermission(false);
+              setPermissionType('camera');
+              setShowMediaSelection(false);
               setShowPermissionModal(true);
               return;
             }
             setCameraPermission(true);
           } else {
             setCameraPermission(false);
+            setPermissionType('camera');
+            setShowMediaSelection(false);
             setShowPermissionModal(true);
             return;
           }
@@ -193,13 +196,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 340,
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: theme.colors.text,
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 5,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   pickerTitle: {
     fontSize: theme.typography.fontSize['2xl'],

@@ -1,29 +1,29 @@
 import React from "react";
 import { View, Text, Dimensions, StyleSheet } from "react-native";
-import { theme } from "../../theme";
-import CardComponent from "./cardComponent";
+import { theme } from "@/src/theme";
+import CardComponent from "@/src/components/Cards/cardComponent";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - theme.spacing.md * 2;
 const SMALL_CARD_HEIGHT = 120;
 const SMALL_CARD_WIDTH = (CARD_WIDTH - theme.spacing.sm * 2) / 3;
 
-interface FatCardProps {
+interface CarbCardProps {
   value?: number;
   onPress?: () => void;
 }
 
-export default function FatCard({ value = 0, onPress }: FatCardProps) {
+export default function CarbCard({ value = 0, onPress }: CarbCardProps) {
   return (
     <CardComponent
       height={SMALL_CARD_HEIGHT}
       width={SMALL_CARD_WIDTH}
-      backgroundColor={theme.card.fatCard}
+      backgroundColor={theme.card.carbCard}
       padding={theme.spacing.sm}
       onPress={onPress}
     >
       <View style={styles.container}>
-        <Text style={styles.label}>FAT</Text>
+        <Text style={styles.label}>CARBS</Text>
         <View style={styles.valueContainer}>
           <Text style={styles.value}>{Math.round(value)}</Text>
           <Text style={styles.unit}>g</Text>
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: theme.colors.text,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -56,23 +56,23 @@ const styles = StyleSheet.create({
   value: {
     fontSize: theme.typography.fontSize["3xl"],
     fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: theme.colors.text,
   },
   unit: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
+    color: theme.colors.text,
     marginLeft: 2,
   },
   progressBar: {
     height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.text,
     borderRadius: 4,
   },
 });

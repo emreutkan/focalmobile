@@ -25,7 +25,7 @@ import Animated, {
 import { theme } from '@/src/theme';
 import * as Haptics from 'expo-haptics';
 import { useUserStore } from '@/src/hooks/userStore';
-import PremiumCelebration from '@/src/components/PremiumCelebration';
+import PremiumCelebration from './components/PremiumCelebration';
 
 const { width, height } = Dimensions.get('window');
 

@@ -6,127 +6,153 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { theme } from '../theme';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AI_IMAGE_ANALYSIS_FOOD_ITEM } from '@/src/constants/apiConstants';
 
-const CARD_COLORS = ['#FFE5E5', '#E5FFF9', '#FFFDE5', '#F3E8FF', '#FFE5D0', '#E5F0FF'];
-const CARD_ACCENTS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#A78BFA', '#FF9F1C', '#007AFF'];
+export type FoodItem = {
+  name: string;
+  quantity: string;
+  estimatedGrams: number;
+  confidence?: number;
+};
+
+function getConfidenceStyle(confidence?: number): { color: string; label: string; warn: boolean } {
+  if (confidence === undefined) return { color: theme.card.dailySummary, label: '', warn: false };
+  if (confidence >= 0.8) return { color: '#D1FAE5', label: 'I\'m sure!', warn: false };
+  if (confidence >= 0.6) return { color: theme.card.yellowAccent, label: 'Most likely...', warn: false };
+  if (confidence >= 0.4) return { color: '#FFE5CC', label: 'Probably?', warn: true };
+  return { color: '#FFD6D6', label: 'No idea 😬 fix me', warn: true };
+}
 
 interface ReviewItemsProps {
-  items: AI_IMAGE_ANALYSIS_FOOD_ITEM[];
-  onUpdateItem: (
-    index: number,
-    field: keyof AI_IMAGE_ANALYSIS_FOOD_ITEM,
-    value: string | number,
-  ) => void;
+  items: FoodItem[];
+  onUpdateItem: (index: number, field: keyof FoodItem, value: string | number) => void;
   onAddItem: () => void;
   onRemoveItem: (index: number) => void;
   onConfirm: () => void;
+  userNotes: string;
+  onUserNotesChange: (notes: string) => void;
 }
 
-export default function ReviewItems({
-  items,
-  onUpdateItem,
-  onAddItem,
-  onRemoveItem,
-  onConfirm,
-}: ReviewItemsProps) {
+function toDisplayName(name: string): string {
+  return name.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export default function ReviewItems({ items, onUpdateItem, onAddItem, onRemoveItem, onConfirm, userNotes, onUserNotesChange }: ReviewItemsProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + 100 }]}>
+    <View style={styles.container}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerEmoji}>🍽️</Text>
-          <Text style={styles.headerTitle}>Is this right?</Text>
-          <View style={styles.headerRow}>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>
-                {items.length} {items.length === 1 ? 'item' : 'items'}
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.headerEyebrow}>AI DETECTED</Text>
+              <Text style={styles.headerTitle}>
+                {items.length} {items.length === 1 ? 'ITEM' : 'ITEMS'}
               </Text>
             </View>
-            <TouchableOpacity onPress={onAddItem} style={styles.addIconButton}>
-              <Ionicons name="add" size={22} color={theme.colors.text} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={onAddItem} style={styles.addIconBtn}>
+                <Ionicons name="add" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
           </View>
+          <Text style={styles.headerSubtitle}>Adjust anything that looks off</Text>
         </View>
 
+        {/* Items */}
         {items.map((item, idx) => {
-          const cardColor = CARD_COLORS[idx % CARD_COLORS.length];
-          const accent = CARD_ACCENTS[idx % CARD_ACCENTS.length];
+          const conf = getConfidenceStyle(item.confidence);
           return (
-            <View key={idx} style={[styles.itemCard, { backgroundColor: cardColor }]}>
-              <View style={styles.itemTopRow}>
-                <View style={[styles.indexBadge, { backgroundColor: accent }]}>
-                  <Text style={styles.indexBadgeText}>{idx + 1}</Text>
+            <View key={idx} style={[styles.card, { backgroundColor: conf.color }]}>
+              {/* Card top bar */}
+              <View style={styles.cardTopBar}>
+                <View style={styles.cardNumber}>
+                  <Text style={styles.cardNumberText}>{idx + 1}</Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => onRemoveItem(idx)}
-                  style={styles.removeButton}
-                >
-                  <Ionicons name="close" size={18} color="#DC2626" />
+                {conf.label ? (
+                  <View style={[styles.confidenceBadge, conf.warn && styles.confidenceBadgeWarn]}>
+                    {conf.warn && <Ionicons name="alert-circle" size={13} color="#DC2626" />}
+                    <Text style={[styles.confidenceText, conf.warn && styles.confidenceTextWarn]}>
+                      {conf.label}
+                    </Text>
+                  </View>
+                ) : null}
+                <TouchableOpacity onPress={() => onRemoveItem(idx)} style={styles.removeBtn}>
+                  <Ionicons name="close" size={16} color="#DC2626" />
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>ITEM NAME</Text>
+              {/* Name input */}
+              <View style={styles.nameInputWrap}>
                 <TextInput
-                  value={item.name}
-                  onChangeText={(value) => onUpdateItem(idx, 'name', value)}
-                  placeholder="Item Name"
-                  placeholderTextColor={theme.colors.textTertiary}
-                  style={styles.input}
+                  value={toDisplayName(item.name)}
+                  onChangeText={(v) => onUpdateItem(idx, 'name', v.toLowerCase())}
+                  placeholder="Food name..."
+                  placeholderTextColor="rgba(0,0,0,0.3)"
+                  style={styles.nameInput}
                 />
               </View>
 
-              <View style={styles.inputRow}>
-                <View style={[styles.inputContainer, styles.weightChip]}>
-                  <Text style={styles.inputLabel}>WEIGHT</Text>
-                  <View style={styles.weightRow}>
-                    <TextInput
-                      value={item.estimatedGrams.toString()}
-                      onChangeText={(value) =>
-                        onUpdateItem(idx, 'estimatedGrams', Number(value) || 0)
-                      }
-                      placeholder="0"
-                      placeholderTextColor={theme.colors.placeholder}
-                      keyboardType="numeric"
-                      style={styles.input}
-                    />
-                    <Text style={styles.unitLabel}>g</Text>
-                  </View>
+              {/* Weight row */}
+              <View style={styles.weightRow}>
+                <Text style={styles.weightLabel}>WEIGHT</Text>
+                <View style={styles.weightInputWrap}>
+                  <TextInput
+                    value={item.estimatedGrams.toString()}
+                    onChangeText={(v) => onUpdateItem(idx, 'estimatedGrams', Number(v) || 0)}
+                    placeholder="0"
+                    placeholderTextColor="rgba(0,0,0,0.3)"
+                    keyboardType="numeric"
+                    style={styles.weightInput}
+                  />
+                  <Text style={styles.weightUnit}>g</Text>
                 </View>
               </View>
             </View>
           );
         })}
 
-        <TouchableOpacity onPress={onAddItem} style={styles.addButton}>
-          <Ionicons name="add-circle" size={28} color="#4ECDC4" />
-          <Text style={styles.addButtonText}>Add Something Else</Text>
+        {/* Add button */}
+        <TouchableOpacity onPress={onAddItem} style={styles.addBtn}>
+          <Ionicons name="add-circle-outline" size={24} color={theme.colors.text} />
+          <Text style={styles.addBtnText}>ADD ANOTHER ITEM</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 100 }} />
+        {/* User notes */}
+        <View style={styles.notesWrap}>
+          <Text style={styles.notesLabel}>ANYTHING TO ADD?</Text>
+          <Text style={styles.notesHint}>e.g. "I only ate half the rice"</Text>
+          <TextInput
+            value={userNotes}
+            onChangeText={onUserNotesChange}
+            placeholder="Tell the AI what you actually ate..."
+            placeholderTextColor={theme.colors.textTertiary}
+            style={styles.notesInput}
+            multiline
+            numberOfLines={3}
+          />
+        </View>
       </ScrollView>
 
-      <BlurView
-        intensity={60}
-        tint="systemChromeMaterialLight"
-        style={[styles.floatingButtonContainer, { bottom: insets.bottom + theme.spacing.xl }]}
-      >
-        <TouchableOpacity onPress={onConfirm} style={styles.confirmButton}>
+      {/* Floating confirm */}
+      <View style={[styles.floatingBar, { bottom: insets.bottom + theme.spacing.lg }]}>
+        <TouchableOpacity onPress={onConfirm} style={styles.confirmBtn} activeOpacity={0.85}>
           <Ionicons name="sparkles" size={22} color={theme.colors.text} />
-          <Text style={styles.confirmButtonText}>See Results!</Text>
+          <Text style={styles.confirmText}>CALCULATE NUTRITION</Text>
+          <Ionicons name="arrow-forward" size={20} color={theme.colors.text} />
         </TouchableOpacity>
-      </BlurView>
+      </View>
     </View>
   );
 }
@@ -136,181 +162,253 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    alignItems: 'center',
+  scroll: { flex: 1 },
+  scrollContent: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
-  headerEmoji: {
-    fontSize: 48,
+
+  // Header
+  header: {
     marginBottom: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerEyebrow: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textTertiary,
+    letterSpacing: 3,
   },
   headerTitle: {
-    fontSize: theme.typography.fontSize['3xl'],
+    fontSize: theme.typography.fontSize['4xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+    letterSpacing: 1,
   },
-  headerRow: {
+  headerSubtitle: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.textSecondary,
+  },
+  headerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: theme.spacing.sm,
+    alignItems: 'center',
   },
-  countBadge: {
-    backgroundColor: theme.card.dailySummary,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 2,
-    borderColor: theme.colors.text,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-  },
-  countBadgeText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-  },
-  addIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E5FFF9',
-    borderWidth: 2,
+  addIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.card,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.lg,
-  },
-  itemCard: {
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: 3,
-    borderColor: theme.colors.text,
-    gap: theme.spacing.md,
     shadowColor: theme.colors.text,
-    shadowOffset: { width: 4, height: 4 },
+    shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
-    elevation: 5,
+    elevation: 3,
   },
-  itemTopRow: {
+
+  // Card
+  card: {
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.15)',
+    borderRadius: theme.borderRadius['2xl'],
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  cardTopBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  indexBadge: {
+  cardNumber: {
     width: 32,
     height: 32,
     borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.12)',
     borderWidth: 2,
-    borderColor: theme.colors.text,
+    borderColor: 'rgba(0,0,0,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  indexBadgeText: {
+  cardNumberText: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
   },
-  removeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  confidenceBadge: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 3,
+    marginHorizontal: theme.spacing.sm,
+  },
+  confidenceBadgeWarn: {
+    backgroundColor: '#FEE2E2',
+  },
+  confidenceText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: 'rgba(0,0,0,0.5)',
+  },
+  confidenceTextWarn: {
+    color: '#DC2626',
+  },
+  removeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FEE2E2',
     borderWidth: 2,
     borderColor: '#DC2626',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  inputRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-  },
-  inputContainer: {
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+
+  // Name input
+  nameInputWrap: {
+    backgroundColor: 'rgba(255,255,255,0.6)',
     borderWidth: 2,
-    borderColor: theme.colors.text,
+    borderColor: 'rgba(0,0,0,0.2)',
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
-  weightChip: {
-    flex: 0,
-    minWidth: 120,
-  },
-  inputLabel: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: theme.spacing.xxs,
-  },
-  input: {
-    fontSize: theme.typography.fontSize.lg,
+  nameInput: {
+    fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
     padding: 0,
   },
+
+  // Weight row
   weightRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    justifyContent: 'space-between',
   },
-  unitLabel: {
+  weightLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: 'rgba(0,0,0,0.4)',
+    letterSpacing: 2,
+  },
+  weightInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.2)',
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    minWidth: 100,
+  },
+  weightInput: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    padding: 0,
+    flex: 1,
+    textAlign: 'right',
+  },
+  weightUnit: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textTertiary,
+    color: 'rgba(0,0,0,0.4)',
   },
-  addButton: {
-    paddingVertical: theme.spacing.md,
-    borderWidth: 3,
-    borderStyle: 'dashed',
-    borderColor: '#4ECDC4',
-    backgroundColor: '#E5FFF9',
-    borderRadius: theme.borderRadius.xl,
+
+  // Notes
+  notesWrap: {
+    backgroundColor: theme.colors.card,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderRadius: theme.borderRadius['2xl'],
+    padding: theme.spacing.lg,
+    gap: theme.spacing.xs,
+  },
+  notesLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textTertiary,
+    letterSpacing: 2,
+  },
+  notesHint: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  notesInput: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text,
+    minHeight: 72,
+    textAlignVertical: 'top',
+    padding: 0,
+  },
+
+  // Add button
+  addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing.sm,
+    borderWidth: 3,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.text,
+    borderRadius: theme.borderRadius['2xl'],
+    paddingVertical: theme.spacing.lg,
+    backgroundColor: 'transparent',
   },
-  addButtonText: {
+  addBtnText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
-    color: '#059669',
+    color: theme.colors.text,
+    letterSpacing: 1,
   },
-  floatingButtonContainer: {
+
+  // Floating confirm
+  floatingBar: {
     position: 'absolute',
-    alignSelf: 'center',
-    overflow: 'hidden',
-    borderRadius: theme.borderRadius.xl,
+    left: theme.spacing.lg,
+    right: theme.spacing.lg,
+  },
+  confirmBtn: {
+    backgroundColor: theme.card.yellowAccent,
     borderWidth: 3,
     borderColor: theme.colors.text,
-    zIndex: 40,
+    borderRadius: theme.borderRadius['2xl'],
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.md,
     shadowColor: theme.colors.text,
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,
-    elevation: 5,
+    elevation: 6,
   },
-  confirmButton: {
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.xxl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-  },
-  confirmButtonText: {
-    fontSize: theme.typography.fontSize.xl,
+  confirmText: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    textTransform: 'uppercase',
     letterSpacing: 1,
   },
 });

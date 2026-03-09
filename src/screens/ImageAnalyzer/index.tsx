@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '@/src/components/LoadingScreen';
 import CardComponent from '@/src/components/Cards/cardComponent';
-import { analyzeImage } from '@/src/services/groqService';
+import { analyzeImage } from '@/src/services/mealService';
 
 const { width } = Dimensions.get('window');
 const SIDE_BUTTON_WIDTH = Math.floor((width - theme.spacing.lg * 2 - theme.spacing.md) / 2) - 8;

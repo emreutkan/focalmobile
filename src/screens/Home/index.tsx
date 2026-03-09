@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, StyleSheet, RefreshControl, Alert, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
@@ -7,7 +7,7 @@ import { theme } from "@/src/theme";
 import TopBar from "./components/topBar";
 import MiddleSection from "./components/middleSection";
 import MealsSection from "./components/mealsSection";
-import MacroBreakdownModal from "@/src/components/MacroBreakdownModal";
+import MacroBreakdownModal from "./components/MacroBreakdownModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 import CardComponent from "@/src/components/Cards/cardComponent";
@@ -17,6 +17,7 @@ import { MediaSelection } from "./components/mediaSelection";
 import * as ImagePicker from "expo-image-picker";
 import { MediaPermission } from "./components/mediaPermission";
 import { ShowImage } from "./components/showImage";
+import { useMealsToday, useDeleteMeal } from "@/src/hooks/useMealQueries";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -26,11 +27,19 @@ export default function HomeScreen() {
       scrollY.value = event.contentOffset.y;
     },
   });
-    const [refreshing,setRefreshing] = useState(false);
+    const { data: mealsData, refetch, isRefetching } = useMealsToday();
+    const deleteMealMutation = useDeleteMeal();
+
+    const meals = mealsData?.meals ?? [];
+    const dailyTotals = {
+      total_calories: mealsData?.dailyTotals.calories ?? 0,
+      total_protein: mealsData?.dailyTotals.protein ?? 0,
+      total_carbs: mealsData?.dailyTotals.carbs ?? 0,
+      total_fat: mealsData?.dailyTotals.fat ?? 0,
+    };
+
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [showImageModal, setShowImageModal] = useState(false);
-    const [dailyTotals, setDailyTotals] = useState({ total_calories: 0, total_protein: 0, total_carbs: 0, total_fat: 0 });
-    const [meals, setMeals] = useState<any[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [modalType, setModalType] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories');
     const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
@@ -38,35 +47,25 @@ export default function HomeScreen() {
     const [showPermissionModal, setShowPermissionModal] = useState(false);
     const [showMediaSelection, setShowMediaSelection] = useState(false);
     const [permissionType, setPermissionType] = useState<'camera' | 'gallery' | 'both' | 'none'>('both');
+
     const checkPermissions = async () => {
       const [cameraStatus, galleryStatus] = await Promise.all([
           ImagePicker.getCameraPermissionsAsync(),
           ImagePicker.getMediaLibraryPermissionsAsync(),
         ]);
-        const hasCamera = cameraStatus.granted;
-        const hasGallery = galleryStatus.granted;
-  
-        setCameraPermission(hasCamera);
-        setGalleryPermission(hasGallery);
-        if (!hasCamera && !hasGallery) {
-          setShowPermissionModal(true);
-          setPermissionType('none');
-        }
+        setCameraPermission(cameraStatus.granted);
+        setGalleryPermission(galleryStatus.granted);
       };
 
 
-    useEffect(() => {
-
+    React.useEffect(() => {
       checkPermissions();
     }, []);
 
-
-
     const onRefresh = useCallback(async () => {
-        setRefreshing(true);
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setRefreshing(false);
-    }, []);
+        await refetch();
+    }, [refetch]);
 
     const handleCardPress = useCallback(async (type: 'calories' | 'protein' | 'carbs' | 'fat') => {
       try {
@@ -78,7 +77,7 @@ export default function HomeScreen() {
       }
     }, []);
 
-    const handleDeleteMeal = useCallback(async (mealId: number) => {
+    const handleDeleteMeal = useCallback(async (mealId: string) => {
       Alert.alert(
         'Delete Meal',
         'Are you sure you want to delete this meal?',
@@ -89,8 +88,10 @@ export default function HomeScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
-                // await deleteMeal(mealId);
                 await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                deleteMealMutation.mutate(mealId, {
+                  onError: () => Alert.alert('Error', 'Failed to delete meal'),
+                });
               } catch (error) {
                 console.error('Error deleting meal:', error);
                 Alert.alert('Error', 'Failed to delete meal');
@@ -99,16 +100,16 @@ export default function HomeScreen() {
           },
         ]
       );
-    }, []);
+    }, [deleteMealMutation]);
 
     const {top, bottom} = useSafeAreaInsets();
     const { width } = Dimensions.get("window");
     const FLOATING_CARD_WIDTH = Math.min(400, width - theme.spacing.xl * 2);
-    
+
     const handleScanFood = useCallback(async () => {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-  
+
 
       setShowMediaSelection(true);
     }, []);
@@ -136,11 +137,11 @@ export default function HomeScreen() {
         setShowImageModal(true);
       }
     }, [selectedImage]);
-    
+
     return (
         <>
           <Stack.Screen options={{title: "Home", headerShown: false}} />
-            <StatusBar style="dark" />  
+            <StatusBar style="dark" />
               <View style={styles.container} >
                 <Animated.ScrollView
                   scrollEventThrottle={16}
@@ -150,12 +151,12 @@ export default function HomeScreen() {
                   }}
                   onScroll={scrollHandler}
                   refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} />
                   }
 
                 >
                   <TopBar />
-                  <MiddleSection 
+                  <MiddleSection
                     calories={dailyTotals.total_calories}
                     protein={dailyTotals.total_protein}
                     carbs={dailyTotals.total_carbs}
@@ -167,7 +168,7 @@ export default function HomeScreen() {
                   />
                   <MealsSection meals={meals} onDeleteMeal={handleDeleteMeal} />
                 </Animated.ScrollView>
-                
+
                 <View style={[styles.floatingButtonContainer, { bottom: bottom + theme.spacing.xl }]}>
                   <CardComponent
                     height={64}
@@ -194,6 +195,7 @@ export default function HomeScreen() {
                 setGalleryPermission={setGalleryPermission}
                 setShowPermissionModal={setShowPermissionModal}
                 setShowMediaSelection={setShowMediaSelection}
+                setPermissionType={setPermissionType}
                 />}
 
 
@@ -238,7 +240,7 @@ export default function HomeScreen() {
         </>
     )
 
-}   
+}
 
 
 const styles = StyleSheet.create({
@@ -266,4 +268,4 @@ const styles = StyleSheet.create({
       textTransform: 'uppercase',
       letterSpacing: 1,
     },
-})  
+})

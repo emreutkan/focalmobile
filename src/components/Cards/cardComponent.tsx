@@ -128,12 +128,12 @@ export default function CardComponent({
   return (
     <View style={styles.outerContainer}>
       {showShadow && (
-        <Animated.View 
+        <Animated.View
           style={[
-            styles.shadow, 
+            styles.shadow,
             { borderRadius },
             shadowAnimatedStyle || defaultShadowStyle
-          ]} 
+          ]}
         />
       )}
 

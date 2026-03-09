@@ -1,32 +1,30 @@
 import React from "react";
 import { View, Text, Dimensions, StyleSheet } from "react-native";
-import { theme } from "../../theme";
-import CardComponent from "./cardComponent";
+import { theme } from "@/src/theme";
+import CardComponent from "@/src/components/Cards/cardComponent";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - theme.spacing.md * 2;
-const SMALL_CARD_HEIGHT = 120;
-const SMALL_CARD_WIDTH = (CARD_WIDTH - theme.spacing.sm * 2) / 3;
 
-interface CarbCardProps {
-  value?: number;
+interface Props {
+  calories?: number;
   onPress?: () => void;
 }
 
-export default function CarbCard({ value = 0, onPress }: CarbCardProps) {
+export default function DailySummaryCard({ calories = 0, onPress }: Props) {
   return (
     <CardComponent
-      height={SMALL_CARD_HEIGHT}
-      width={SMALL_CARD_WIDTH}
-      backgroundColor={theme.card.carbCard}
-      padding={theme.spacing.sm}
+      height={200}
+      width={CARD_WIDTH}
+      backgroundColor={theme.card.dailySummary}
+      padding={theme.spacing.md}
       onPress={onPress}
     >
       <View style={styles.container}>
-        <Text style={styles.label}>CARBS</Text>
+        <Text style={styles.label}>CALORIES</Text>
         <View style={styles.valueContainer}>
-          <Text style={styles.value}>{Math.round(value)}</Text>
-          <Text style={styles.unit}>g</Text>
+          <Text style={styles.value}>{Math.round(calories)}</Text>
+          <Text style={styles.unit}>kcal</Text>
         </View>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: '0%' }]} />
@@ -62,7 +60,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    marginLeft: 2,
+    marginLeft: 4,
   },
   progressBar: {
     height: 8,

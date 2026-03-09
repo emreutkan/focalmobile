@@ -15,7 +15,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { theme } from "../theme";
+import { theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -76,7 +76,7 @@ export default function MacroBreakdownModal({
   const overlayStyle = useAnimatedStyle(() => {
     return {
       // Reanimated handles string interpolation on the UI thread automatically
-      backgroundColor: `rgba(0, 0, 0, ${blurIntensity.value})`, 
+      backgroundColor: `rgba(0, 0, 0, ${blurIntensity.value})`,
     };
   });
 
@@ -99,10 +99,10 @@ export default function MacroBreakdownModal({
         activeOpacity={1}
         onPress={onClose}
       >
-<Animated.View 
-        style={[styles.blurOverlay, overlayStyle]} 
+<Animated.View
+        style={[styles.blurOverlay, overlayStyle]}
       />
-         
+
         <Animated.View style={[styles.modalContainer, modalStyle]}>
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
             {/* Header */}
