@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ReviewItems, { FoodItem } from '@/src/components/ReviewItems';
-import { analyzeItems, RateLimitError } from '@/src/services/mealService';
+import { analyzeItems, RateLimitError, AuthError } from '@/src/services/mealService';
 import LoadingScreen from '@/src/components/LoadingScreen';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { Theme } from '@/src/theme';
@@ -20,6 +20,7 @@ export default function FoodReviewScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const isPro = useUserStore((state) => state.isPro);
+  const setIsAuthenticated = useUserStore((state) => state.setIsAuthenticated);
 
   const [items, setItems] = useState<FoodItem[]>(() => {
     try {
@@ -83,6 +84,19 @@ export default function FoodReviewScreen() {
     } catch (error: any) {
       console.error('Error calculating nutrition:', error);
       setCalculating(false);
+
+      if (error instanceof AuthError) {
+        Alert.alert(
+          "Session Expired", 
+          "Your session has ended. Please log in again to continue.",
+          [{ text: "Log In", onPress: () => {
+            setIsAuthenticated(false);
+            router.replace('/auth');
+          }}]
+        );
+        return;
+      }
+
       if (error instanceof RateLimitError) {
         if (isPro) {
           Alert.alert("Limit Reached", "You've used all 30 AI calls for today. Come back tomorrow!", [{ text: "OK" }]);

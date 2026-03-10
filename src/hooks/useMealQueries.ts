@@ -23,6 +23,8 @@ export function useSaveMeal() {
       mealName: string;
       healthScore: number;
       reasoning: string;
+      badIngredients: string[];
+      goodIngredients: string[];
       foodItems: NutritionFoodItem[];
     }) => saveMeal(payload),
     onSuccess: () => {

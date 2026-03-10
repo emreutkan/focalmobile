@@ -6,22 +6,23 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { Theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LabelNutrition } from '../services/mealService';
 
 export type FoodItem = {
   name: string;
   quantity: string;
   estimatedGrams: number;
   confidence?: number;
+  labelNutrition?: LabelNutrition;
 };
 
-function getConfidenceStyle(theme: Theme, confidence?: number): { color: string; label: string; warn: boolean } {
+function getConfidenceStyle(theme: Theme, confidence?: number, hasLabel?: boolean): { color: string; label: string; warn: boolean } {
+  if (hasLabel) return { color: theme.card.carbCard, label: 'EXACT DATA 🎯', warn: false };
   if (confidence === undefined) return { color: theme.card.dailySummary, label: '', warn: false };
   if (confidence >= 0.8) return { color: '#D1FAE5', label: 'I\'m sure!', warn: false };
   if (confidence >= 0.6) return { color: theme.card.yellowAccent, label: 'Most likely...', warn: false };
@@ -43,7 +44,15 @@ function toDisplayName(name: string): string {
   return name.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default function ReviewItems({ items, onUpdateItem, onAddItem, onRemoveItem, onConfirm, userNotes, onUserNotesChange }: ReviewItemsProps) {
+export default function ReviewItems({ 
+  items, 
+  onUpdateItem, 
+  onAddItem, 
+  onRemoveItem, 
+  onConfirm, 
+  userNotes, 
+  onUserNotesChange 
+}: ReviewItemsProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
@@ -75,18 +84,20 @@ export default function ReviewItems({ items, onUpdateItem, onAddItem, onRemoveIt
 
         {/* Items */}
         {items.map((item, idx) => {
-          const conf = getConfidenceStyle(theme, item.confidence);
+          const isLabel = !!item.labelNutrition;
+          const conf = getConfidenceStyle(theme, item.confidence, isLabel);
           return (
-            <View key={idx} style={[styles.card, { backgroundColor: conf.color }]}>
+            <View key={idx} style={[styles.card, { backgroundColor: conf.color, borderColor: isLabel ? theme.colors.primary : 'rgba(0,0,0,0.15)' }]}>
               {/* Card top bar */}
               <View style={styles.cardTopBar}>
                 <View style={styles.cardNumber}>
                   <Text style={styles.cardNumberText}>{idx + 1}</Text>
                 </View>
                 {conf.label ? (
-                  <View style={[styles.confidenceBadge, conf.warn && styles.confidenceBadgeWarn]}>
+                  <View style={[styles.confidenceBadge, conf.warn && styles.confidenceBadgeWarn, isLabel && styles.labelBadge]}>
                     {conf.warn && <Ionicons name="alert-circle" size={13} color="#DC2626" />}
-                    <Text style={[styles.confidenceText, conf.warn && styles.confidenceTextWarn]}>
+                    {isLabel && <Ionicons name="checkmark-circle" size={13} color={theme.colors.primary} />}
+                    <Text style={[styles.confidenceText, conf.warn && styles.confidenceTextWarn, isLabel && styles.labelText]}>
                       {conf.label}
                     </Text>
                   </View>
@@ -97,20 +108,21 @@ export default function ReviewItems({ items, onUpdateItem, onAddItem, onRemoveIt
               </View>
 
               {/* Name input */}
-              <View style={styles.nameInputWrap}>
+              <View style={[styles.nameInputWrap, isLabel && styles.disabledInput]}>
                 <TextInput
                   value={toDisplayName(item.name)}
                   onChangeText={(v) => onUpdateItem(idx, 'name', v.toLowerCase())}
                   placeholder="Food name..."
                   placeholderTextColor="rgba(0,0,0,0.3)"
                   style={styles.nameInput}
+                  editable={!isLabel}
                 />
               </View>
 
               {/* Weight row */}
               <View style={styles.weightRow}>
-                <Text style={styles.weightLabel}>WEIGHT</Text>
-                <View style={styles.weightInputWrap}>
+                <Text style={styles.weightLabel}>{isLabel ? 'SERVING SIZE' : 'WEIGHT'}</Text>
+                <View style={[styles.weightInputWrap, isLabel && styles.disabledInput]}>
                   <TextInput
                     value={item.estimatedGrams.toString()}
                     onChangeText={(v) => onUpdateItem(idx, 'estimatedGrams', Number(v) || 0)}
@@ -118,10 +130,18 @@ export default function ReviewItems({ items, onUpdateItem, onAddItem, onRemoveIt
                     placeholderTextColor="rgba(0,0,0,0.3)"
                     keyboardType="numeric"
                     style={styles.weightInput}
+                    editable={!isLabel}
                   />
                   <Text style={styles.weightUnit}>g</Text>
                 </View>
               </View>
+              
+              {isLabel && (
+                <View style={styles.labelInfo}>
+                  <Ionicons name="information-circle-outline" size={14} color={theme.colors.textSecondary} />
+                  <Text style={styles.labelInfoText}>Values extracted directly from the nutrition label</Text>
+                </View>
+              )}
             </View>
           );
         })}
@@ -261,6 +281,9 @@ const getStyles = (theme: Theme) => StyleSheet.create({
   confidenceBadgeWarn: {
     backgroundColor: '#FEE2E2',
   },
+  labelBadge: {
+    backgroundColor: theme.colors.primary + '20',
+  },
   confidenceText: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.bold,
@@ -268,6 +291,9 @@ const getStyles = (theme: Theme) => StyleSheet.create({
   },
   confidenceTextWarn: {
     color: '#DC2626',
+  },
+  labelText: {
+    color: theme.colors.primary,
   },
   removeBtn: {
     width: 32,
@@ -288,6 +314,11 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
+  },
+  disabledInput: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderColor: 'rgba(0,0,0,0.1)',
+    opacity: 0.8,
   },
   nameInput: {
     fontSize: theme.typography.fontSize.xl,
@@ -332,6 +363,17 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
     color: 'rgba(0,0,0,0.4)',
+  },
+  labelInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -theme.spacing.xxs,
+  },
+  labelInfoText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
   },
 
   // Notes

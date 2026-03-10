@@ -38,6 +38,8 @@ export default function NutritionResultsScreen() {
         mealName: mealName || nutrition.mealName || 'Untitled Meal',
         healthScore: nutrition.healthScore,
         reasoning: nutrition.reasoning,
+        badIngredients: nutrition.badIngredients ?? [],
+        goodIngredients: nutrition.goodIngredients ?? [],
         foodItems: nutrition.foodItems,
       },
       {
