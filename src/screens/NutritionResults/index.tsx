@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   },
   scoreEmoji: { fontSize: 36 },
   scoreNumber: {
-    fontSize: theme.typography.fontSize['7xl'],
+    fontSize: theme.typography.fontSize['4xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
     lineHeight: 80,
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
-    borderRadius: theme.borderRadius.xs,
+    borderRadius: theme.borderRadius.sm,
     overflow: 'hidden',
   },
   foodCals: {
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.card.fatCard,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
-    borderRadius: theme.borderRadius.xs,
+    borderRadius: theme.borderRadius.sm,
     overflow: 'hidden',
   },
 

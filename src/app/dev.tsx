@@ -134,6 +134,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.white,
+    color: theme.colors.surface,
   },
 });

@@ -66,7 +66,7 @@ function StyledInput({
           <TextInput
             style={styles.input}
             placeholder={placeholder}
-            placeholderTextColor={theme.colors.placeholder}
+            placeholderTextColor={theme.colors.textTertiary}
             value={value}
             onChangeText={onChangeText}
             secureTextEntry={secureTextEntry && !showPassword}
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: theme.borderRadius.xl,
     backgroundColor: theme.card.dailySummary,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     alignItems: 'center',
     justifyContent: 'center',
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     padding: 4,
   },
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.lg,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.md,
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
   },
   buttonInner: {
     borderRadius: theme.borderRadius.xl,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     paddingVertical: 18,
     alignItems: 'center',
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.xl,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     paddingVertical: 16,
     gap: theme.spacing.sm,

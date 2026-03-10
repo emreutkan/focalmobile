@@ -4,7 +4,7 @@ import { theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 interface Meal {
-  id: number;
+  id: string;
   meal_name?: string | null;
   calories: number;
   protein: number;
@@ -17,7 +17,7 @@ interface Meal {
 
 interface MealsSectionProps {
   meals: Meal[];
-  onDeleteMeal?: (mealId: number) => void;
+  onDeleteMeal?: (mealId: string) => void;
 }
 
 export default function MealsSection({ meals, onDeleteMeal }: MealsSectionProps) {

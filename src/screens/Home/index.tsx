@@ -30,7 +30,18 @@ export default function HomeScreen() {
     const { data: mealsData, refetch, isRefetching } = useMealsToday();
     const deleteMealMutation = useDeleteMeal();
 
-    const meals = mealsData?.meals ?? [];
+    const meals = (mealsData?.meals ?? []).map(m => ({
+      id: m.id,
+      meal_name: m.meal_name,
+      calories: m.foodItems.reduce((acc, item) => acc + item.macros.calories, 0),
+      protein: m.foodItems.reduce((acc, item) => acc + item.macros.protein, 0),
+      carbs: m.foodItems.reduce((acc, item) => acc + item.macros.carbs, 0),
+      fat: m.foodItems.reduce((acc, item) => acc + item.macros.fat, 0),
+      health_score: m.healthScore,
+      created_at: m.createdAt,
+      foodItems: m.foodItems.map(fi => ({ name: fi.itemName }))
+    }));
+
     const dailyTotals = {
       total_calories: mealsData?.dailyTotals.calories ?? 0,
       total_protein: mealsData?.dailyTotals.protein ?? 0,

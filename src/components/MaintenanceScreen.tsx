@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.textSecondary,
-    letterSpacing: theme.typography.letterSpacing.tight,
+    letterSpacing: theme.typography.letterSpacing.normal,
   },
   messageCard: {
     flexDirection: 'row',
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.tight,
+    letterSpacing: theme.typography.letterSpacing.normal,
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
@@ -168,6 +168,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.tight,
+    letterSpacing: theme.typography.letterSpacing.normal,
   },
 });

@@ -64,7 +64,7 @@ const PRO_FEATURES = [
     icon: 'notifications-outline' as const,
     title: 'SMART REMINDERS',
     description: 'Never miss a meal again.',
-    color: theme.colors.secondaryLight,
+    color: theme.colors.textSecondary,
   },
 ];
 
@@ -74,24 +74,24 @@ function FloatingOrb({ delay, startX, startY, color }: { delay: number; startX: 
   const scale = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withDelay(delay, withTiming(1, { duration: theme.animation.duration.slower }));
+    scale.value = withDelay(delay, withTiming(1, { duration: 500 }));
     translateY.value = withDelay(
       delay,
       withRepeat(
         withSequence(
-          withTiming(-20, { duration: theme.animation.duration.drift, easing: Easing.inOut(Easing.ease) }),
-          withTiming(20, { duration: theme.animation.duration.drift, easing: Easing.inOut(Easing.ease) })
+          withTiming(-20, { duration: 300, easing: Easing.inOut(Easing.ease) }),
+          withTiming(20, { duration: 300, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
         true
       )
     );
     translateX.value = withDelay(
-      delay + theme.animation.duration.slow,
+      delay + 400,
       withRepeat(
         withSequence(
-          withTiming(15, { duration: theme.animation.duration.driftSlow, easing: Easing.inOut(Easing.ease) }),
-          withTiming(-15, { duration: theme.animation.duration.driftSlow, easing: Easing.inOut(Easing.ease) })
+          withTiming(15, { duration: 400, easing: Easing.inOut(Easing.ease) }),
+          withTiming(-15, { duration: 400, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
         true
@@ -146,14 +146,14 @@ function FeatureCard({ feature, index }: { feature: typeof PRO_FEATURES[0]; inde
         style={styles.featureCard}
       >
         <View style={[styles.featureIconBox, { backgroundColor: feature.color }]}>
-          <Ionicons name={feature.icon} size={theme.sizes.iconXl} color={theme.colors.text} />
+          <Ionicons name={feature.icon} size={32} color={theme.colors.text} />
         </View>
         <View style={styles.featureContent}>
           <Text style={styles.featureTitle}>{feature.title}</Text>
           <Text style={styles.featureDescription}>{feature.description}</Text>
         </View>
         <View style={styles.checkCircle}>
-          <Ionicons name="checkmark" size={theme.sizes.iconSm} color={theme.colors.text} />
+          <Ionicons name="checkmark" size={24} color={theme.colors.text} />
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -178,24 +178,24 @@ function PricingCard({
   index: number;
 }) {
   const scale = useSharedValue(1);
-  const shadowOffset = useSharedValue(theme.offsets.sm);
+  const shadowOffset = useSharedValue(8);
 
   const handlePressIn = () => {
     scale.value = withTiming(0.98, { duration: 80 });
-    shadowOffset.value = withTiming(theme.spacing.xxs, { duration: 80 });
+    shadowOffset.value = withTiming(4, { duration: 80 });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
   const handlePressOut = () => {
     scale.value = withTiming(1, { duration: 100 });
-    shadowOffset.value = withTiming(theme.offsets.sm, { duration: 100 });
+    shadowOffset.value = withTiming(8, { duration: 100 });
   };
 
   const cardStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: scale.value },
-      { translateX: interpolate(shadowOffset.value, [theme.spacing.xxs, theme.offsets.sm], [theme.spacing.xxs, 0]) },
-      { translateY: interpolate(shadowOffset.value, [theme.spacing.xxs, theme.offsets.sm], [theme.spacing.xxs, 0]) },
+      { translateX: interpolate(shadowOffset.value, [4, 8], [4, 0]) },
+      { translateY: interpolate(shadowOffset.value, [4, 8], [4, 0]) },
     ],
   }));
 
@@ -256,8 +256,8 @@ export default function ProScreen() {
   useEffect(() => {
     pulseAnim.value = withRepeat(
       withSequence(
-        withTiming(1.02, { duration: theme.animation.duration.slowest, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: theme.animation.duration.slowest, easing: Easing.inOut(Easing.ease) })
+        withTiming(1.02, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true
@@ -265,8 +265,8 @@ export default function ProScreen() {
 
     glowAnim.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: theme.animation.duration.drift }),
-        withTiming(0, { duration: theme.animation.duration.drift })
+        withTiming(1, { duration: 300 }),
+        withTiming(0, { duration: 300 })
       ),
       -1,
       true
@@ -300,10 +300,10 @@ export default function ProScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.orbContainer}>
-        <FloatingOrb delay={0} startX={-30} startY={100} color={theme.colors.proOverlay} />
-        <FloatingOrb delay={theme.animation.duration.normal} startX={width - theme.sizes.heroIcon} startY={200} color={theme.card.dailySummaryOverlay} />
-        <FloatingOrb delay={theme.animation.duration.slower} startX={theme.sizes.buttonMd} startY={height * 0.4} color={theme.card.fatCardOverlay} />
-        <FloatingOrb delay={900} startX={width - theme.sizes.heroRing} startY={height * 0.6} color={theme.card.proteinCardOverlay} />
+        <FloatingOrb delay={0} startX={-30} startY={100} color={theme.colors.overlayMedium} />
+        <FloatingOrb delay={300} startX={width - 48} startY={200} color={theme.colors.overlayLight} />
+        <FloatingOrb delay={500} startX={32} startY={height * 0.4} color={theme.colors.overlayLight} />
+        <FloatingOrb delay={900} startX={width - 40} startY={height * 0.6} color={theme.colors.overlayLight} />
       </View>
 
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -316,7 +316,7 @@ export default function ProScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={theme.sizes.iconLg} color={theme.colors.text} />
+            <Ionicons name="arrow-back" size={32} color={theme.colors.text} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>GO</Text>
@@ -338,7 +338,7 @@ export default function ProScreen() {
           >
             <View style={styles.heroIconContainer}>
               <View style={styles.heroIconInner}>
-                <Ionicons name="diamond" size={theme.sizes.icon4xl} color={theme.colors.text} />
+                <Ionicons name="diamond" size={48} color={theme.colors.text} />
               </View>
               <View style={styles.heroIconRing} />
               <View style={styles.heroIconRingOuter} />
@@ -406,7 +406,7 @@ export default function ProScreen() {
               <Animated.View style={[styles.subscribeButtonWrapper, ctaAnimatedStyle]}>
                 <View style={styles.subscribeButtonShadow} />
                 <View style={styles.subscribeButton}>
-                  <Ionicons name="diamond" size={theme.sizes.iconLg} color={theme.colors.text} />
+                  <Ionicons name="diamond" size={32} color={theme.colors.text} />
                   <Text style={styles.subscribeButtonText}>START 7-DAY FREE TRIAL</Text>
                 </View>
               </Animated.View>
@@ -431,7 +431,7 @@ export default function ProScreen() {
           >
             <View style={styles.socialProofStars}>
               {[...Array(5)].map((_, i) => (
-                <Ionicons key={i} name="star" size={theme.sizes.iconSm} color={theme.colors.pro} />
+                <Ionicons key={i} name="star" size={24} color={theme.card.pro} />
               ))}
             </View>
             <Text style={styles.socialProofText}>Loved by 10,000+ users</Text>
@@ -460,9 +460,9 @@ const styles = StyleSheet.create({
   },
   floatingOrb: {
     position: 'absolute',
-    width: theme.sizes.orb,
-    height: theme.sizes.orb,
-    borderRadius: theme.sizes.orb / 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   header: {
     flexDirection: 'row',
@@ -470,18 +470,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.md,
-    borderBottomWidth: theme.borderWidth.thick,
+    borderBottomWidth: 4,
     borderBottomColor: theme.colors.text,
     backgroundColor: theme.colors.background,
   },
   backButton: {
-    width: theme.sizes.buttonLg,
-    height: theme.sizes.buttonLg,
-    borderRadius: theme.sizes.buttonLg / 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: theme.borderWidth.base,
+    borderWidth: 1,
     borderColor: theme.colors.text,
   },
   headerTitleContainer: {
@@ -496,11 +496,11 @@ const styles = StyleSheet.create({
     letterSpacing: theme.typography.letterSpacing.wide,
   },
   proBadgeHeader: {
-    backgroundColor: theme.colors.pro,
+    backgroundColor: theme.card.pro,
     paddingHorizontal: theme.spacing.md - theme.spacing.xs,
     paddingVertical: theme.spacing.xs + theme.spacing.xxs,
     borderRadius: theme.borderRadius.sm,
-    borderWidth: theme.borderWidth.medium,
+    borderWidth: 2,
     borderColor: theme.colors.text,
   },
   proBadgeHeaderText: {
@@ -522,18 +522,18 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.lg,
   },
   heroIconContainer: {
-    width: theme.sizes.heroContainer,
-    height: theme.sizes.heroContainer,
+    width: 64,
+    height: 64,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
   },
   heroIconInner: {
-    width: theme.sizes.heroIcon,
-    height: theme.sizes.heroIcon,
-    borderRadius: theme.sizes.heroIcon / 2,
-    backgroundColor: theme.colors.pro,
-    borderWidth: theme.borderWidth.thick,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.card.pro,
+    borderWidth: 4,
     borderColor: theme.colors.text,
     justifyContent: 'center',
     alignItems: 'center',
@@ -541,25 +541,25 @@ const styles = StyleSheet.create({
   },
   heroIconRing: {
     position: 'absolute',
-    width: theme.sizes.heroRing,
-    height: theme.sizes.heroRing,
-    borderRadius: theme.sizes.heroRing / 2,
-    borderWidth: theme.borderWidth.medium,
-    borderColor: theme.colors.proOverlayMedium,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: theme.colors.overlayMedium,
   },
   heroIconRingOuter: {
     position: 'absolute',
-    width: theme.sizes.orb,
-    height: theme.sizes.orb,
-    borderRadius: theme.sizes.orb / 2,
-    borderWidth: theme.borderWidth.base,
-    borderColor: theme.colors.proOverlayLight,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.overlayLight,
   },
   heroTitle: {
     fontSize: theme.typography.fontSize['3xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textSecondary,
-    letterSpacing: theme.typography.letterSpacing.wider,
+    letterSpacing: theme.typography.letterSpacing.wide,
     marginBottom: theme.spacing.xs,
   },
   heroTitleAccent: {
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.base,
+    lineHeight: theme.typography.lineHeight.snug,
     paddingHorizontal: theme.spacing.md,
   },
   featuresSection: {
@@ -596,17 +596,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
-    borderWidth: theme.borderWidth.medium,
+    borderWidth: 2,
     borderColor: theme.colors.text,
   },
   featureIconBox: {
-    width: theme.sizes.featureIcon,
-    height: theme.sizes.featureIcon,
+    width: 40,
+    height: 40,
     borderRadius: theme.borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: theme.spacing.md,
-    borderWidth: theme.borderWidth.base,
+    borderWidth: 1,
     borderColor: theme.colors.text,
   },
   featureContent: {
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.tight,
+    letterSpacing: theme.typography.letterSpacing.normal,
     marginBottom: theme.spacing.xxs,
   },
   featureDescription: {
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.card.dailySummary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: theme.borderWidth.base,
+    borderWidth: 1,
     borderColor: theme.colors.text,
   },
   pricingSection: {
@@ -644,10 +644,10 @@ const styles = StyleSheet.create({
   },
   pricingShadow: {
     position: 'absolute',
-    top: theme.offsets.sm,
-    left: theme.offsets.sm,
-    right: -theme.offsets.sm,
-    bottom: -theme.offsets.sm,
+    top: 8,
+    left: 8,
+    right: -8,
+    bottom: -8,
     backgroundColor: theme.colors.text,
     borderRadius: theme.borderRadius.xl,
   },
@@ -655,13 +655,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card,
     padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.xl,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 4,
     borderColor: theme.colors.text,
     alignItems: 'center',
     position: 'relative',
   },
   pricingCardPopular: {
-    backgroundColor: theme.colors.pro,
+    backgroundColor: theme.card.pro,
   },
   popularBadge: {
     position: 'absolute',
@@ -677,8 +677,8 @@ const styles = StyleSheet.create({
   popularBadgeText: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.pro,
-    letterSpacing: theme.typography.letterSpacing.tight,
+    color: theme.card.pro,
+    letterSpacing: theme.typography.letterSpacing.normal,
   },
   pricingDuration: {
     fontSize: theme.typography.fontSize.sm,
@@ -699,10 +699,10 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   priceAmount: {
-    fontSize: theme.typography.fontSize['6xl'],
+    fontSize: theme.typography.fontSize['4xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    lineHeight: theme.typography.lineHeight.price,
+    lineHeight: theme.typography.lineHeight.loose,
   },
   pricePeriod: {
     fontSize: theme.typography.fontSize.base,
@@ -729,10 +729,10 @@ const styles = StyleSheet.create({
   },
   subscribeButtonShadow: {
     position: 'absolute',
-    top: theme.offsets.md,
-    left: theme.offsets.md,
-    right: -theme.offsets.md,
-    bottom: -theme.offsets.md,
+    top: 8,
+    left: 8,
+    right: -8,
+    bottom: -8,
     backgroundColor: theme.colors.text,
     borderRadius: theme.borderRadius.xl,
   },
@@ -740,11 +740,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.pro,
+    backgroundColor: theme.card.pro,
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.xl,
     borderRadius: theme.borderRadius.xl,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 4,
     borderColor: theme.colors.text,
     gap: theme.spacing.sm,
   },
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.tight,
+    letterSpacing: theme.typography.letterSpacing.normal,
   },
   trialText: {
     fontSize: theme.typography.fontSize.sm,
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.textTertiary,
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.xs,
+    lineHeight: theme.typography.lineHeight.tight,
     paddingHorizontal: theme.spacing.md,
   },
 });
