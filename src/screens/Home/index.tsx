@@ -38,7 +38,7 @@ export default function HomeScreen() {
       total_fat: mealsData?.dailyTotals.fat ?? 0,
     };
 
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [showImageModal, setShowImageModal] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [modalType, setModalType] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories');
@@ -47,6 +47,7 @@ export default function HomeScreen() {
     const [showPermissionModal, setShowPermissionModal] = useState(false);
     const [showMediaSelection, setShowMediaSelection] = useState(false);
     const [permissionType, setPermissionType] = useState<'camera' | 'gallery' | 'both' | 'none'>('both');
+    const [isAddingMore, setIsAddingMore] = useState(false);
 
     const checkPermissions = async () => {
       const [cameraStatus, galleryStatus] = await Promise.all([
@@ -108,35 +109,50 @@ export default function HomeScreen() {
 
     const handleScanFood = useCallback(async () => {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-
-
+      setIsAddingMore(false);
       setShowMediaSelection(true);
     }, []);
 
+    const handleAddMore = useCallback(async () => {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setIsAddingMore(true);
+      setShowMediaSelection(true);
+    }, []);
+
+    const handleSelectedImages = useCallback((uris: string[]) => {
+      if (isAddingMore) {
+        setSelectedImages(prev => {
+          const newUris = [...prev, ...uris].slice(0, 5);
+          return newUris;
+        });
+      } else {
+        setSelectedImages(uris);
+      }
+      setShowMediaSelection(false);
+    }, [isAddingMore]);
+
     const handleGoodToGo = useCallback(() => {
-      if (selectedImage) {
+      if (selectedImages.length > 0) {
         setShowImageModal(false);
         router.push({
           pathname: "/imageAnalyzer",
-          params: { imageUri: selectedImage },
+          params: { imageUris: JSON.stringify(selectedImages) },
         });
-        setSelectedImage(null);
+        setSelectedImages([]);
       }
-    }, [selectedImage, router]);
+    }, [selectedImages, router]);
 
     const handleCancel = useCallback(() => {
       setShowImageModal(false);
-      setSelectedImage(null);
+      setSelectedImages([]);
     }, []);
 
     useEffect(() => {
-      if (selectedImage) {
-        setShowMediaSelection(false);
+      if (selectedImages.length > 0 && !showMediaSelection) {
         setShowPermissionModal(false);
         setShowImageModal(true);
       }
-    }, [selectedImage]);
+    }, [selectedImages, showMediaSelection]);
 
     return (
         <>
@@ -188,7 +204,7 @@ export default function HomeScreen() {
 
                 {showMediaSelection &&
                 <MediaSelection
-                setSelectedImage={setSelectedImage}
+                setSelectedImages={handleSelectedImages}
                 cameraPermission={cameraPermission}
                 galleryPermission={galleryPermission}
                 setCameraPermission={setCameraPermission}
@@ -196,6 +212,7 @@ export default function HomeScreen() {
                 setShowPermissionModal={setShowPermissionModal}
                 setShowMediaSelection={setShowMediaSelection}
                 setPermissionType={setPermissionType}
+                compact={isAddingMore}
                 />}
 
 
@@ -235,7 +252,7 @@ export default function HomeScreen() {
                     theme.card.fatCard
                   }
                 />
-                {showImageModal && <ShowImage selectedImage={selectedImage} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} />}
+                {showImageModal && <ShowImage selectedImages={selectedImages} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} onAddMore={handleAddMore} />}
             </View>
         </>
     )

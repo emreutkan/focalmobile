@@ -1,27 +1,58 @@
-import { View, Image, TouchableOpacity } from "react-native";
+import React from "react";
+import { View, Image, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { Text } from "react-native";
 import { theme } from "@/src/theme";
-import { StyleSheet } from "react-native";
 
-
+import { Ionicons } from "@expo/vector-icons";
 
 interface ShowImageProps {
-  selectedImage: string | null;
+  selectedImages: string[];
   handleCancel: () => void;
   handleGoodToGo: () => void;
+  onAddMore: () => void;
 }
-export function ShowImage({ selectedImage, handleCancel, handleGoodToGo }: ShowImageProps) {
-  console.log('ShowImage rendered, selectedImage:', selectedImage);
+
+export function ShowImage({ selectedImages, handleCancel, handleGoodToGo, onAddMore }: ShowImageProps) {
+  console.log('ShowImage rendered, selectedImages:', selectedImages.length);
   return (
     <View style={styles.overlay}>
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={styles.previewImage}
-            />
-          )}
+          <ScrollView 
+            horizontal 
+            pagingEnabled 
+            showsHorizontalScrollIndicator={false}
+            style={styles.imageScroll}
+          >
+            {selectedImages.map((uri, index) => (
+              <View key={index} style={styles.imageWrapper}>
+                <Image
+                  source={{ uri }}
+                  style={styles.previewImage}
+                />
+                {selectedImages.length > 0 && (
+                  <View style={styles.imageCount}>
+                    <Text style={styles.imageCountText}>{index + 1} / {selectedImages.length + (selectedImages.length < 5 ? 1 : 0)}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+
+            {selectedImages.length < 5 && (
+              <View style={styles.imageWrapper}>
+                <TouchableOpacity 
+                  style={styles.addMoreButton}
+                  onPress={onAddMore}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add" size={64} color={theme.colors.text} />
+                  <Text style={styles.addMoreText}>ADD PHOTO</Text>
+                  <Text style={styles.addMoreSubtext}>{selectedImages.length} / 5 used</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+
           <Text style={styles.modalQuestion}>READY TO ANALYZE?</Text>
           <View style={styles.modalButtons}>
             <TouchableOpacity
@@ -71,13 +102,60 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: theme.colors.text,
   },
-  previewImage: {
+  imageScroll: {
     width: '100%',
     height: 300,
+    marginBottom: theme.spacing.lg,
+  },
+  imageWrapper: {
+    width: 336,
+    height: 300,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
     borderRadius: theme.borderRadius.lg,
     borderWidth: 4,
     borderColor: theme.colors.text,
-    marginBottom: theme.spacing.lg,
+  },
+  addMoreButton: {
+    width: '100%',
+    height: '100%',
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 4,
+    borderColor: theme.colors.text,
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  addMoreText: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    letterSpacing: 1,
+  },
+  addMoreSubtext: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.textSecondary,
+  },
+  imageCount: {
+    position: 'absolute',
+    bottom: theme.spacing.md,
+    right: theme.spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+  },
+  imageCountText: {
+    color: '#fff',
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   modalQuestion: {
     fontSize: theme.typography.fontSize['2xl'],

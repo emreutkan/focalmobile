@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -16,7 +16,7 @@ const SIDE_BUTTON_WIDTH = Math.floor((width - theme.spacing.lg * 2 - theme.spaci
 const ERROR_FACES = ['😵‍💫', '🫠', '🤷‍♂️', '😬', '🙈'];
 
 export default function ImageAnalyzer() {
-  const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
+  const { imageUri, imageUris } = useLocalSearchParams<{ imageUri?: string; imageUris?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -27,17 +27,31 @@ export default function ImageAnalyzer() {
     () => ERROR_FACES[Math.floor(Math.random() * ERROR_FACES.length)],
   );
 
+  const uris = useMemo(() => {
+    if (imageUris) {
+      try {
+        return JSON.parse(imageUris) as string[];
+      } catch (e) {
+        console.error('Error parsing imageUris:', e);
+        return imageUri ? [imageUri] : [];
+      }
+    }
+    return imageUri ? [imageUri] : [];
+  }, [imageUri, imageUris]);
+
   const handleNewPhoto = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 1,
+        allowsMultipleSelection: true,
+        selectionLimit: 5,
       });
 
-      if (!result.canceled && result.assets[0]) {
+      if (!result.canceled && result.assets.length > 0) {
         router.replace({
           pathname: '/imageAnalyzer',
-          params: { imageUri: result.assets[0].uri },
+          params: { imageUris: JSON.stringify(result.assets.map(a => a.uri)) },
         });
       }
     } catch (err) {
@@ -46,13 +60,13 @@ export default function ImageAnalyzer() {
   }, [router]);
 
   const handleAnalyze = useCallback(async () => {
-    if (!imageUri || analyzing) return;
+    if (uris.length === 0 || analyzing) return;
 
     setAnalyzing(true);
     setError('');
 
     try {
-      const result = await analyzeImage(imageUri);
+      const result = await analyzeImage(uris);
 
       if (!result.isFood) {
         setError(result.message || "That doesn't look like food!");
@@ -73,15 +87,15 @@ export default function ImageAnalyzer() {
     } finally {
       setAnalyzing(false);
     }
-  }, [imageUri, analyzing, router]);
+  }, [uris, analyzing, router]);
 
   // Auto-analyze when entering screen
   useEffect(() => {
-    if (imageUri && !hasAnalyzed && !error) {
+    if (uris.length > 0 && !hasAnalyzed && !error) {
       setHasAnalyzed(true);
       handleAnalyze();
     }
-  }, [imageUri, hasAnalyzed, error, handleAnalyze]);
+  }, [uris, hasAnalyzed, error, handleAnalyze]);
 
   if (analyzing) {
     return <LoadingScreen message="Analyzing your food..." />;
@@ -102,13 +116,24 @@ export default function ImageAnalyzer() {
           <Text style={styles.title}>ANALYZING</Text>
         </View>
 
-        {imageUri && (
+        {uris.length > 0 && (
           <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.image}
-              contentFit="cover"
-            />
+            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+              {uris.map((uri, index) => (
+                <View key={index} style={{ width: width - theme.spacing.lg * 2 }}>
+                  <Image
+                    source={{ uri }}
+                    style={styles.image}
+                    contentFit="cover"
+                  />
+                  {uris.length > 1 && (
+                    <View style={styles.imageCountBadge}>
+                      <Text style={styles.imageCountText}>{index + 1} / {uris.length}</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
           </View>
         )}
 
@@ -220,6 +245,20 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 320,
+  },
+  imageCountBadge: {
+    position: 'absolute',
+    bottom: theme.spacing.md,
+    right: theme.spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+  },
+  imageCountText: {
+    color: '#fff',
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   // Error state
   errorCard: {

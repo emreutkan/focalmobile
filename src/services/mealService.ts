@@ -23,11 +23,20 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
+export type LabelNutrition = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  servingSizeGrams: number;
+};
+
 export type AnalyzedFoodItem = {
   name: string;
   quantity: string;
   estimatedGrams: number;
   confidence?: number;
+  labelNutrition?: LabelNutrition;
 };
 
 export type AnalyzeImageResponse = {
@@ -118,21 +127,25 @@ export async function checkHealth(): Promise<boolean> {
   }
 }
 
-export async function analyzeImage(imageUri: string): Promise<AnalyzeImageResponse> {
+export async function analyzeImage(imageUris: string | string[]): Promise<AnalyzeImageResponse> {
   const headers = await getAuthHeader();
-
-  const processed = await ImageManipulator.manipulateAsync(
-    imageUri,
-    [{ resize: { width: 1024 } }],
-    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-  );
+  const uris = Array.isArray(imageUris) ? imageUris : [imageUris];
 
   const formData = new FormData();
-  formData.append('image', {
-    uri: processed.uri,
-    type: 'image/jpeg',
-    name: 'image.jpg',
-  } as any);
+
+  for (const [index, uri] of uris.entries()) {
+    const processed = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+    );
+
+    formData.append('images', {
+      uri: processed.uri,
+      type: 'image/jpeg',
+      name: `image_${index}.jpg`,
+    } as any);
+  }
 
   const res = await apiFetch(`${BASE_URL}/v1/meals/analyze`, {
     method: 'POST',
