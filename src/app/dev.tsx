@@ -1,13 +1,17 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { useMemo } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useUserStore } from "@/src/hooks/userStore";
 
 export default function DevScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const isPro = useUserStore((state) => state.isPro);
   const setIsPro = useUserStore((state) => state.setIsPro);
 
@@ -61,7 +65,7 @@ export default function DevScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -134,6 +138,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.white,
+    color: theme.colors.surface,
   },
 });

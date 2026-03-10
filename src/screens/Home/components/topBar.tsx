@@ -1,8 +1,13 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
+import React, { useMemo } from "react";
+
 export default function TopBar() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
   const today = new Date();
   const month = today.toLocaleDateString('en-US', { month: 'long' });
@@ -29,15 +34,17 @@ export default function TopBar() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
   },
   title: {
     fontSize: theme.typography.fontSize['4xl'],
+    lineHeight: 52, // Multiple of 4
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
   },
@@ -51,13 +58,14 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: theme.typography.fontSize['2xl'],
+    lineHeight: 36, // Multiple of 4
     fontWeight: theme.typography.fontWeight.regular,
     color: theme.colors.textSecondary,
   },
   settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44, // WCAG AAA / Apple HIG minimum touch target
+    height: 44,
+    borderRadius: 22,
     backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,8 @@ import Animated, {
   FadeInDown,
   FadeInUp,
 } from 'react-native-reanimated';
-import { theme } from '@/src/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { Theme } from '@/src/theme';
 import { signUp, signInWithEmail, signInWithGoogle } from '@/src/lib/auth';
 
 type AuthMode = 'login' | 'register';
@@ -57,6 +58,9 @@ function StyledInput({
   editable?: boolean;
   delay?: number;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   return (
     <Animated.View entering={FadeInDown.delay(delay).duration(500).springify()}>
       <View style={styles.inputContainer}>
@@ -66,7 +70,7 @@ function StyledInput({
           <TextInput
             style={styles.input}
             placeholder={placeholder}
-            placeholderTextColor={theme.colors.placeholder}
+            placeholderTextColor={theme.colors.textTertiary}
             value={value}
             onChangeText={onChangeText}
             secureTextEntry={secureTextEntry && !showPassword}
@@ -110,6 +114,8 @@ function BoldButton({
   variant?: 'primary' | 'secondary' | 'outline';
   delay?: number;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const scale = useSharedValue(1);
   const translateY = useSharedValue(0);
 
@@ -182,6 +188,8 @@ interface AuthScreenProps {
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const { top, bottom } = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -302,7 +310,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={styles.container}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -507,7 +515,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -543,7 +551,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: theme.borderRadius.xl,
     backgroundColor: theme.card.dailySummary,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     alignItems: 'center',
     justifyContent: 'center',
@@ -575,7 +583,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     padding: 4,
   },
@@ -621,7 +629,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.lg,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.md,
@@ -686,7 +694,7 @@ const styles = StyleSheet.create({
   },
   buttonInner: {
     borderRadius: theme.borderRadius.xl,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     paddingVertical: 18,
     alignItems: 'center',
@@ -778,7 +786,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.xl,
-    borderWidth: theme.borderWidth.thick,
+    borderWidth: 3,
     borderColor: theme.colors.text,
     paddingVertical: 16,
     gap: theme.spacing.sm,

@@ -8,6 +8,8 @@ import { checkHealth } from "@/src/services/mealService";
 import { useUserStore } from "@/src/hooks/userStore";
 import MaintenanceScreen from "@/src/components/MaintenanceScreen";
 
+import { ThemeProvider } from "@/src/contexts/ThemeContext";
+
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
@@ -24,14 +26,17 @@ export default function RootLayout() {
 
   if (checked && !isBackendUp) {
     return (
-      <SafeAreaProvider>
-        <MaintenanceScreen />
-      </SafeAreaProvider>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <MaintenanceScreen />
+        </SafeAreaProvider>
+      </ThemeProvider>
     );
   }
 
   return (
     <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
     <SafeAreaProvider>
       <AuthGate>
         <Stack screenOptions={{ headerShown: false }}>
@@ -47,6 +52,7 @@ export default function RootLayout() {
         </Stack>
       </AuthGate>
     </SafeAreaProvider>
+    </ThemeProvider>
     </QueryClientProvider>
   );
 }

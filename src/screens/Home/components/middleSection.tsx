@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import DailySummaryCard from "./dailySummaryCard";
 import ProteinCard from "./proteinCard";
 import CarbCard from "./carbCard";
 import FatCard from "./fatCard";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 
 interface MiddleSectionProps {
   calories?: number;
@@ -27,6 +28,8 @@ export default function MiddleSection({
   onCarbsPress,
   onFatPress,
 }: MiddleSectionProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   return (
     <View style={styles.container}>
       <DailySummaryCard 
@@ -43,7 +46,7 @@ export default function MiddleSection({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.md,

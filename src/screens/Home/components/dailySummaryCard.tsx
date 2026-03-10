@@ -1,10 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, Dimensions, StyleSheet } from "react-native";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import CardComponent from "@/src/components/Cards/cardComponent";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width - theme.spacing.md * 2;
 
 interface Props {
   calories?: number;
@@ -12,6 +12,10 @@ interface Props {
 }
 
 export default function DailySummaryCard({ calories = 0, onPress }: Props) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const CARD_WIDTH = width - theme.spacing.md * 2;
+
   return (
     <CardComponent
       height={200}
@@ -34,7 +38,7 @@ export default function DailySummaryCard({ calories = 0, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'space-between',

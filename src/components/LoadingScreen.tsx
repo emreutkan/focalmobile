@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { View, Text, StyleSheet, Animated, Easing } from "react-native";
-import { theme } from "../theme";
+import { useTheme } from "../contexts/ThemeContext";
+import { Theme } from "../theme";
 
 interface LoadingScreenProps {
   message?: string;
@@ -22,6 +23,8 @@ const FUNNY_MESSAGES = [
 const EMOJIS_CYCLE = ["🤔", "🧐", "🔍", "👀", "🤨", "💭"];
 
 export default function LoadingScreen({ message }: LoadingScreenProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [funnyIndex, setFunnyIndex] = useState(0);
@@ -124,7 +127,7 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",

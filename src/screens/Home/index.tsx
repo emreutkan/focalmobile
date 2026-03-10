@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { View, Text, StyleSheet, RefreshControl, Alert, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import TopBar from "./components/topBar";
 import MiddleSection from "./components/middleSection";
 import MealsSection from "./components/mealsSection";
@@ -21,6 +22,8 @@ import { useMealsToday, useDeleteMeal } from "@/src/hooks/useMealQueries";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { theme, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -30,7 +33,18 @@ export default function HomeScreen() {
     const { data: mealsData, refetch, isRefetching } = useMealsToday();
     const deleteMealMutation = useDeleteMeal();
 
-    const meals = mealsData?.meals ?? [];
+    const meals = (mealsData?.meals ?? []).map(m => ({
+      id: m.id,
+      meal_name: m.meal_name,
+      calories: m.foodItems.reduce((acc, item) => acc + item.macros.calories, 0),
+      protein: m.foodItems.reduce((acc, item) => acc + item.macros.protein, 0),
+      carbs: m.foodItems.reduce((acc, item) => acc + item.macros.carbs, 0),
+      fat: m.foodItems.reduce((acc, item) => acc + item.macros.fat, 0),
+      health_score: m.healthScore,
+      created_at: m.createdAt,
+      foodItems: m.foodItems.map(fi => ({ name: fi.itemName }))
+    }));
+
     const dailyTotals = {
       total_calories: mealsData?.dailyTotals.calories ?? 0,
       total_protein: mealsData?.dailyTotals.protein ?? 0,
@@ -39,7 +53,6 @@ export default function HomeScreen() {
     };
 
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
-    const [showImageModal, setShowImageModal] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [modalType, setModalType] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories');
     const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
@@ -105,7 +118,7 @@ export default function HomeScreen() {
 
     const {top, bottom} = useSafeAreaInsets();
     const { width } = Dimensions.get("window");
-    const FLOATING_CARD_WIDTH = Math.min(400, width - theme.spacing.xl * 2);
+    const FLOATING_CARD_WIDTH = useMemo(() => Math.min(400, width - theme.spacing.xl * 2), [width, theme.spacing.xl]);
 
     const handleScanFood = useCallback(async () => {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -129,11 +142,20 @@ export default function HomeScreen() {
         setSelectedImages(uris);
       }
       setShowMediaSelection(false);
+      setShowPermissionModal(false);
     }, [isAddingMore]);
+
+    const handleRemoveImage = useCallback((index: number) => {
+      setSelectedImages(prev => {
+        const newImages = [...prev];
+        newImages.splice(index, 1);
+        return newImages;
+      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }, []);
 
     const handleGoodToGo = useCallback(() => {
       if (selectedImages.length > 0) {
-        setShowImageModal(false);
         router.push({
           pathname: "/imageAnalyzer",
           params: { imageUris: JSON.stringify(selectedImages) },
@@ -143,21 +165,13 @@ export default function HomeScreen() {
     }, [selectedImages, router]);
 
     const handleCancel = useCallback(() => {
-      setShowImageModal(false);
       setSelectedImages([]);
     }, []);
-
-    useEffect(() => {
-      if (selectedImages.length > 0 && !showMediaSelection) {
-        setShowPermissionModal(false);
-        setShowImageModal(true);
-      }
-    }, [selectedImages, showMediaSelection]);
 
     return (
         <>
           <Stack.Screen options={{title: "Home", headerShown: false}} />
-            <StatusBar style="dark" />
+            <StatusBar style={isDark ? "light" : "dark"} />
               <View style={styles.container} >
                 <Animated.ScrollView
                   scrollEventThrottle={16}
@@ -252,7 +266,7 @@ export default function HomeScreen() {
                     theme.card.fatCard
                   }
                 />
-                {showImageModal && <ShowImage selectedImages={selectedImages} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} onAddMore={handleAddMore} />}
+                {selectedImages.length > 0 && !showMediaSelection && <ShowImage selectedImages={selectedImages} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} onAddMore={handleAddMore} onRemoveImage={handleRemoveImage} />}
             </View>
         </>
     )
@@ -260,7 +274,7 @@ export default function HomeScreen() {
 }
 
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colors.background,

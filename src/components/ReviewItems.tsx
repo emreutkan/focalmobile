@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import { Theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,7 +21,7 @@ export type FoodItem = {
   confidence?: number;
 };
 
-function getConfidenceStyle(confidence?: number): { color: string; label: string; warn: boolean } {
+function getConfidenceStyle(theme: Theme, confidence?: number): { color: string; label: string; warn: boolean } {
   if (confidence === undefined) return { color: theme.card.dailySummary, label: '', warn: false };
   if (confidence >= 0.8) return { color: '#D1FAE5', label: 'I\'m sure!', warn: false };
   if (confidence >= 0.6) return { color: theme.card.yellowAccent, label: 'Most likely...', warn: false };
@@ -43,6 +44,8 @@ function toDisplayName(name: string): string {
 }
 
 export default function ReviewItems({ items, onUpdateItem, onAddItem, onRemoveItem, onConfirm, userNotes, onUserNotesChange }: ReviewItemsProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
 
   return (
@@ -72,7 +75,7 @@ export default function ReviewItems({ items, onUpdateItem, onAddItem, onRemoveIt
 
         {/* Items */}
         {items.map((item, idx) => {
-          const conf = getConfidenceStyle(item.confidence);
+          const conf = getConfidenceStyle(theme, item.confidence);
           return (
             <View key={idx} style={[styles.card, { backgroundColor: conf.color }]}>
               {/* Card top bar */}
@@ -157,7 +160,7 @@ export default function ReviewItems({ items, onUpdateItem, onAddItem, onRemoveIt
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

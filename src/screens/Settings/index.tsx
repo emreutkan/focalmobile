@@ -10,13 +10,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { theme } from '@/src/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserStore } from '@/src/hooks/userStore';
 import { deleteAllMeals } from '@/src/services/mealService';
+import { useTheme } from '@/src/contexts/ThemeContext';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { theme, themeMode, setThemeMode } = useTheme();
   const [isDeleting, setIsDeleting] = useState(false);
   const setIsAuthenticated = useUserStore((state) => state.setIsAuthenticated);
   const isPro = useUserStore((state) => state.isPro);
@@ -70,15 +71,15 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: theme.colors.text }]}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.text }]}
           onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>SETTINGS</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>SETTINGS</Text>
         <View style={styles.backButton} />
       </View>
 
@@ -88,37 +89,37 @@ export default function SettingsScreen() {
       >
         {!isPro && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>UPGRADE</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary }]}>UPGRADE</Text>
 
             <TouchableOpacity
               style={styles.proCard}
               onPress={handleSwitchToPro}
               activeOpacity={0.9}
             >
-              <View style={styles.proCardShadow} />
-              <View style={styles.proCardInner}>
+              <View style={[styles.proCardShadow, { backgroundColor: theme.colors.text }]} />
+              <View style={[styles.proCardInner, { backgroundColor: theme.card.pro, borderColor: theme.colors.text }]}>
                 <View style={styles.proCardHeader}>
-                  <View style={styles.proIconCircle}>
+                  <View style={[styles.proIconCircle, { backgroundColor: theme.colors.overlayLight, borderColor: theme.colors.text }]}>
                     <Ionicons
                       name="diamond"
-                      size={theme.sizes.iconLg}
+                      size={32}
                       color={theme.colors.text}
                     />
                   </View>
-                  <View style={styles.proBadgeLarge}>
-                    <Ionicons name="star" size={10} color={theme.colors.text} />
-                    <Text style={styles.proBadgeLargeText}>PRO</Text>
+                  <View style={[styles.proBadgeLarge, { backgroundColor: theme.colors.text }]}>
+                    <Ionicons name="star" size={10} color={theme.card.pro} />
+                    <Text style={[styles.proBadgeLargeText, { color: theme.card.pro }]}>PRO</Text>
                   </View>
                 </View>
-                <Text style={styles.proCardTitle}>UNLOCK FULL POTENTIAL</Text>
-                <Text style={styles.proCardSubtitle}>
+                <Text style={[styles.proCardTitle, { color: theme.colors.text }]}>UNLOCK FULL POTENTIAL</Text>
+                <Text style={[styles.proCardSubtitle, { color: theme.colors.textSecondary }]}>
                   Unlimited scans, deep insights, cloud sync & more
                 </Text>
-                <View style={styles.proCardCta}>
-                  <Text style={styles.proCardCtaText}>GET STARTED</Text>
+                <View style={[styles.proCardCta, { backgroundColor: theme.colors.surface, borderColor: theme.colors.text }]}>
+                  <Text style={[styles.proCardCtaText, { color: theme.colors.text }]}>GET STARTED</Text>
                   <Ionicons
                     name="arrow-forward"
-                    size={theme.sizes.iconSm}
+                    size={24}
                     color={theme.colors.text}
                   />
                 </View>
@@ -128,121 +129,145 @@ export default function SettingsScreen() {
         )}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>DATA</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary }]}>APPEARANCE</Text>
+          
+          <View style={[styles.themeSelector, { backgroundColor: theme.colors.surface }]}>
+            {(['light', 'dark', 'system'] as const).map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.themeOption,
+                  themeMode === mode && { backgroundColor: theme.colors.primary }
+                ]}
+                onPress={() => setThemeMode(mode)}
+              >
+                <Text style={[
+                  styles.themeOptionText,
+                  { color: themeMode === mode ? theme.colors.textInverse : theme.colors.text }
+                ]}>
+                  {mode.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary }]}>DATA</Text>
 
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, { backgroundColor: theme.colors.surface }]}
             onPress={handleDeleteData}
             activeOpacity={0.8}
             disabled={isDeleting}
           >
-            <View style={styles.menuItemIcon}>
+            <View style={[styles.menuItemIcon, { backgroundColor: theme.colors.card }]}>
               <Ionicons
                 name="trash-outline"
-                size={theme.sizes.iconLg}
+                size={24}
                 color={theme.colors.error}
               />
             </View>
             <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemTitle}>Delete All Data</Text>
-              <Text style={styles.menuItemSubtitle}>
+              <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>Delete All Data</Text>
+              <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
                 Remove all meals and start fresh
               </Text>
             </View>
             <Ionicons
               name="chevron-forward"
-              size={theme.sizes.iconMd}
+              size={24}
               color={theme.colors.textTertiary}
             />
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ACCOUNT</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary }]}>ACCOUNT</Text>
 
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, { backgroundColor: theme.colors.surface }]}
             onPress={handleLogout}
             activeOpacity={0.8}
           >
-            <View style={styles.menuItemIcon}>
+            <View style={[styles.menuItemIcon, { backgroundColor: theme.colors.card }]}>
               <Ionicons
                 name="log-out-outline"
-                size={theme.sizes.iconLg}
+                size={24}
                 color={theme.colors.error}
               />
             </View>
             <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemTitle}>Logout</Text>
-              <Text style={styles.menuItemSubtitle}>
+              <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>Logout</Text>
+              <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
                 Sign out of your account
               </Text>
             </View>
             <Ionicons
               name="chevron-forward"
-              size={theme.sizes.iconMd}
+              size={24}
               color={theme.colors.textTertiary}
             />
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ABOUT</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary }]}>ABOUT</Text>
 
-          <View style={styles.menuItem}>
-            <View style={styles.menuItemIcon}>
+          <View style={[styles.menuItem, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.menuItemIcon, { backgroundColor: theme.colors.card }]}>
               <Ionicons
                 name="information-circle-outline"
-                size={theme.sizes.iconLg}
+                size={24}
                 color={theme.colors.primary}
               />
             </View>
             <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemTitle}>Version</Text>
-              <Text style={styles.menuItemSubtitle}>1.0.0</Text>
+              <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>Version</Text>
+              <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>1.0.0</Text>
             </View>
           </View>
 
-          <View style={styles.menuItem}>
-            <View style={styles.menuItemIcon}>
+          <View style={[styles.menuItem, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.menuItemIcon, { backgroundColor: theme.colors.card }]}>
               <Ionicons
                 name="heart-outline"
-                size={theme.sizes.iconLg}
+                size={24}
                 color={theme.card.fatCard}
               />
             </View>
             <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemTitle}>Made with love</Text>
-              <Text style={styles.menuItemSubtitle}>By the Focal team</Text>
+              <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>Made with love</Text>
+              <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>By the Focal team</Text>
             </View>
           </View>
         </View>
 
         {__DEV__ && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>DEVELOPER</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary }]}>DEVELOPER</Text>
 
             <TouchableOpacity
-              style={styles.menuItem}
+              style={[styles.menuItem, { backgroundColor: theme.colors.surface }]}
               onPress={handleDevScreen}
               activeOpacity={0.8}
             >
-              <View style={styles.menuItemIcon}>
+              <View style={[styles.menuItemIcon, { backgroundColor: theme.colors.card }]}>
                 <Ionicons
                   name="code-slash-outline"
-                  size={theme.sizes.iconLg}
+                  size={24}
                   color={theme.colors.primary}
                 />
               </View>
               <View style={styles.menuItemContent}>
-                <Text style={styles.menuItemTitle}>Dev Screen</Text>
-                <Text style={styles.menuItemSubtitle}>
+                <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>Dev Screen</Text>
+                <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
                   Developer tools and testing
                 </Text>
               </View>
               <Ionicons
                 name="chevron-forward"
-                size={theme.sizes.iconMd}
+                size={24}
                 color={theme.colors.textTertiary}
               />
             </TouchableOpacity>
@@ -256,158 +281,147 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: theme.borderWidth.thick,
-    borderBottomColor: theme.colors.text,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 4,
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: theme.colors.text,
   },
   headerTitle: {
-    fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.normal,
+    fontSize: 24,
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
+    padding: 24,
+    paddingBottom: 40,
   },
   section: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textTertiary,
-    letterSpacing: theme.typography.letterSpacing.tight,
-    marginBottom: theme.spacing.md,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 16,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.sm,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   menuItemIcon: {
-    width: theme.sizes.buttonMd,
-    height: theme.sizes.buttonMd,
-    borderRadius: theme.sizes.buttonMd / 2,
-    backgroundColor: theme.colors.card,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginRight: 16,
   },
   menuItemContent: {
     flex: 1,
   },
   menuItemTitle: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '700',
   },
   menuItemSubtitle: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textSecondary,
+    fontSize: 13,
+  },
+  themeSelector: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  themeOption: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  themeOptionText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   proCard: {
     position: 'relative',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 12,
   },
   proCardShadow: {
     position: 'absolute',
-    top: theme.offsets.sm,
-    left: theme.offsets.sm,
-    right: -theme.offsets.sm,
-    bottom: -theme.offsets.sm,
-    backgroundColor: theme.colors.text,
-    borderRadius: theme.borderRadius.xl,
+    top: 8,
+    left: 8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 16,
   },
   proCardInner: {
-    backgroundColor: theme.colors.pro,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: theme.borderWidth.thick,
-    borderColor: theme.colors.text,
-    padding: theme.spacing.lg,
+    borderRadius: 16,
+    borderWidth: 4,
+    padding: 24,
   },
   proCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
+    marginBottom: 16,
   },
   proIconCircle: {
-    width: theme.sizes.buttonXl,
-    height: theme.sizes.buttonXl,
-    borderRadius: theme.sizes.buttonXl / 2,
-    backgroundColor: theme.colors.overlayLight,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: theme.borderWidth.base,
-    borderColor: theme.colors.text,
+    borderWidth: 1,
   },
   proBadgeLarge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
-    backgroundColor: theme.colors.text,
-    paddingHorizontal: theme.spacing.md - theme.spacing.xs,
-    paddingVertical: theme.spacing.xs + theme.spacing.xxs,
-    borderRadius: theme.borderRadius.full,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9999,
   },
   proBadgeLargeText: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.pro,
-    letterSpacing: theme.typography.letterSpacing.tight,
+    fontSize: 12,
+    fontWeight: '700',
   },
   proCardTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.tight,
-    marginBottom: theme.spacing.xs,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   proCardSubtitle: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.md,
+    fontSize: 13,
+    marginBottom: 16,
   },
   proCardCta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
-    backgroundColor: theme.colors.whiteTranslucent,
+    gap: 8,
     alignSelf: 'flex-start',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: theme.borderWidth.base,
-    borderColor: theme.colors.text,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   proCardCtaText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.tight,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

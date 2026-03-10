@@ -1,8 +1,8 @@
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Modal } from "react-native";
-import { theme } from "@/src/theme";
+import { Linking, StyleSheet, Text, TouchableOpacity, View, Modal } from "react-native";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 
 interface MediaPermissionProps {
   showPermissionModal: boolean;
@@ -10,6 +10,8 @@ interface MediaPermissionProps {
   permissionType: 'camera' | 'gallery' | 'both' | 'none';
 }
 export  function MediaPermission({ showPermissionModal, setShowPermissionModal, permissionType }: MediaPermissionProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const openSettings = useCallback(() => {
     Linking.openSettings();
     setShowPermissionModal(false);
@@ -58,7 +60,7 @@ export  function MediaPermission({ showPermissionModal, setShowPermissionModal, 
 );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
