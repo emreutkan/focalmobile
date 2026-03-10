@@ -1,30 +1,32 @@
 import React from "react";
 import { View, Text, Dimensions, StyleSheet } from "react-native";
-import { theme } from "../../theme";
-import CardComponent from "./cardComponent";
+import { theme } from "@/src/theme";
+import CardComponent from "@/src/components/Cards/cardComponent";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - theme.spacing.md * 2;
+const SMALL_CARD_HEIGHT = 120;
+const SMALL_CARD_WIDTH = (CARD_WIDTH - theme.spacing.sm * 2) / 3;
 
-interface Props {
-  calories?: number;
+interface ProteinCardProps {
+  value?: number;
   onPress?: () => void;
 }
 
-export default function DailySummaryCard({ calories = 0, onPress }: Props) {
+export default function ProteinCard({ value = 0, onPress }: ProteinCardProps) {
   return (
     <CardComponent
-      height={200}
-      width={CARD_WIDTH}
-      backgroundColor={theme.card.dailySummary}
-      padding={theme.spacing.md}
+      height={SMALL_CARD_HEIGHT}
+      width={SMALL_CARD_WIDTH}
+      backgroundColor={theme.card.proteinCard}
+      padding={theme.spacing.sm}
       onPress={onPress}
     >
       <View style={styles.container}>
-        <Text style={styles.label}>CALORIES</Text>
+        <Text style={styles.label}>PROTEIN</Text>
         <View style={styles.valueContainer}>
-          <Text style={styles.value}>{Math.round(calories)}</Text>
-          <Text style={styles.unit}>kcal</Text>
+          <Text style={styles.value}>{Math.round(value)}</Text>
+          <Text style={styles.unit}>g</Text>
         </View>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: '0%' }]} />
@@ -42,7 +44,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
+    color: '#FFFFFF',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -54,23 +56,23 @@ const styles = StyleSheet.create({
   value: {
     fontSize: theme.typography.fontSize["3xl"],
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
+    color: '#FFFFFF',
   },
   unit: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-    marginLeft: 4,
+    color: '#FFFFFF',
+    marginLeft: 2,
   },
   progressBar: {
     height: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: theme.colors.text,
+    backgroundColor: '#FFFFFF',
     borderRadius: 4,
   },
 });

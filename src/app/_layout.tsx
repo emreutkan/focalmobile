@@ -2,11 +2,36 @@ import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthListener } from "@/src/hooks/useAuthListener";
 import AuthGate from "@/src/components/AuthGate";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { checkHealth } from "@/src/services/mealService";
+import { useUserStore } from "@/src/hooks/userStore";
+import MaintenanceScreen from "@/src/components/MaintenanceScreen";
+
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
   useAuthListener();
+  const { isBackendUp, setIsBackendUp } = useUserStore();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    checkHealth().then((up) => {
+      setIsBackendUp(up);
+      setChecked(true);
+    });
+  }, []);
+
+  if (checked && !isBackendUp) {
+    return (
+      <SafeAreaProvider>
+        <MaintenanceScreen />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
+    <QueryClientProvider client={queryClient}>
     <SafeAreaProvider>
       <AuthGate>
         <Stack screenOptions={{ headerShown: false }}>
@@ -22,5 +47,6 @@ export default function RootLayout() {
         </Stack>
       </AuthGate>
     </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }

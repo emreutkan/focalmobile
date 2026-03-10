@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserStore } from '@/src/hooks/userStore';
+import { deleteAllMeals } from '@/src/services/mealService';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -50,7 +51,7 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               setIsDeleting(true);
-              // await deleteAllData();
+              await deleteAllMeals();
               Alert.alert('Success', 'All data has been deleted.');
             } catch (error) {
               console.error('Error deleting data:', error);

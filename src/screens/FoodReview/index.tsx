@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ReviewItems, { FoodItem } from '@/src/components/ReviewItems';
-import { calculateNutrition } from '@/src/services/groqService';
+import { analyzeItems } from '@/src/services/mealService';
 import LoadingScreen from '@/src/components/LoadingScreen';
 import { theme } from '@/src/theme';
+
 
 export default function FoodReviewScreen() {
   const { items: itemsParam, mealName: mealNameParam } = useLocalSearchParams<{
@@ -30,6 +31,7 @@ export default function FoodReviewScreen() {
     }
   });
   const [calculating, setCalculating] = useState(false);
+  const [userNotes, setUserNotes] = useState('');
 
   const handleUpdateItem = (
     index: number,
@@ -61,7 +63,7 @@ export default function FoodReviewScreen() {
       );
 
       setCalculating(true);
-      const nutritionResult = await calculateNutrition(items);
+      const nutritionResult = await analyzeItems(mealName, items, userNotes || undefined);
 
       console.log('Nutrition calculation completed, navigating to results...');
 
@@ -69,13 +71,14 @@ export default function FoodReviewScreen() {
         pathname: '/nutritionResults',
         params: {
           nutritionData: encodeURIComponent(JSON.stringify(nutritionResult)),
-          foodItems: encodeURIComponent(JSON.stringify(items)),
           mealName: encodeURIComponent(mealName),
         },
       });
+      setCalculating(false);
     } catch (error: any) {
       console.error('Error calculating nutrition:', error);
       setCalculating(false);
+      Alert.alert('Error', 'Failed to calculate nutrition. Please try again.');
     }
   };
 
@@ -91,6 +94,8 @@ export default function FoodReviewScreen() {
         onAddItem={handleAddItem}
         onRemoveItem={handleRemoveItem}
         onConfirm={handleConfirm}
+        userNotes={userNotes}
+        onUserNotesChange={setUserNotes}
       />
     </View>
   );

@@ -14,7 +14,15 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Focal needs camera access to scan and analyze your food.",
-        "NSPhotoLibraryUsageDescription": "Focal needs photo library access to analyze food from your photos."
+        "NSPhotoLibraryUsageDescription": "Focal needs photo library access to analyze food from your photos.",
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "192.168.1.2": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": false
+            }
+          }
+        }
       }
     },
     "android": {

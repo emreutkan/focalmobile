@@ -1,78 +1,54 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FoodItem } from '@/src/components/ReviewItems';
 import { Ionicons } from '@expo/vector-icons';
-import { NutritionResult, saveMeal } from '@/src/services/groqService';
+import { type AnalyzeItemsResponse } from '@/src/services/mealService';
+import { useSaveMeal } from '@/src/hooks/useMealQueries';
 
 export default function NutritionResultsScreen() {
-  const {
-    nutritionData,
-    foodItems: foodItemsParam,
-    mealName: mealNameParam,
-  } = useLocalSearchParams<{
+  const { nutritionData, mealName: mealNameParam } = useLocalSearchParams<{
     nutritionData: string;
-    foodItems: string;
     mealName: string;
   }>();
   const insets = useSafeAreaInsets();
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const router = useRouter();
+  const saveMealMutation = useSaveMeal();
+  const saving = saveMealMutation.isPending;
+  const saved = saveMealMutation.isSuccess;
 
-  let nutrition: NutritionResult | null = null;
-  let foodItems: FoodItem[] = [];
+  let nutrition: AnalyzeItemsResponse | null = null;
   let mealName = '';
 
   try {
-    nutrition = nutritionData
-      ? JSON.parse(decodeURIComponent(nutritionData))
-      : null;
-    foodItems = foodItemsParam
-      ? JSON.parse(decodeURIComponent(foodItemsParam))
-      : [];
+    nutrition = nutritionData ? JSON.parse(decodeURIComponent(nutritionData)) : null;
     mealName = mealNameParam ? decodeURIComponent(mealNameParam) : '';
   } catch (e) {
     console.error('Failed to parse data:', e);
   }
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!nutrition || saved) return;
-
-    try {
-      setSaving(true);
-
-      const mealId = await saveMeal(
-        mealName || 'Untitled Meal',
-        nutrition.healthScore,
-        nutrition.reasoning,
-        nutrition.foodItems,
-        undefined, // Add imagePath if you have it
-      );
-
-      setSaved(true);
-      // Alert.alert('Saved', 'Meal logged successfully!', [
-      //   { text: 'OK', onPress: () => router.replace('/') },
-      // ]);
-    } catch (error) {
-      console.error('Error saving meal:', error);
-      Alert.alert('Error', 'Failed to save meal. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    saveMealMutation.mutate(
+      {
+        mealName: mealName || nutrition.mealName || 'Untitled Meal',
+        healthScore: nutrition.healthScore,
+        reasoning: nutrition.reasoning,
+        foodItems: nutrition.foodItems,
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Saved!', 'Meal logged successfully!', [
+            { text: 'OK', onPress: () => router.replace('/') },
+          ]);
+        },
+        onError: () => {
+          Alert.alert('Error', 'Failed to save meal. Please try again.');
+        },
+      },
+    );
   };
-
-  // const handleDiscard = () => {
-  //   router.replace('/');
-  // };
 
   if (!nutrition) {
     return (
@@ -82,7 +58,6 @@ export default function NutritionResultsScreen() {
     );
   }
 
-  // Calculate total macros from all food items
   const totalMacros = nutrition.foodItems.reduce(
     (acc, item) => ({
       protein: acc.protein + item.macros.protein,
@@ -91,38 +66,33 @@ export default function NutritionResultsScreen() {
       calories: acc.calories + item.macros.calories,
       fiber: acc.fiber + item.macros.fiber,
       sugar: acc.sugar + item.macros.sugar,
-      saturatedFat: acc.saturatedFat + item.macros.saturatedFat,
     }),
-    {
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      calories: 0,
-      fiber: 0,
-      sugar: 0,
-      saturatedFat: 0,
-    },
+    { protein: 0, carbs: 0, fat: 0, calories: 0, fiber: 0, sugar: 0 },
   );
 
-  // Collect all unique micros from all food items
   const allMicros = Array.from(
-    new Set(
-      nutrition.foodItems.flatMap((item) => item.micros.map((m) => m.name)),
-    ),
+    new Set(nutrition.foodItems.flatMap((item) => item.micros.map((m) => m.name))),
   );
 
-  const getScoreEmoji = (score: number) => {
-    if (score >= 80) return '🌟';
-    if (score >= 60) return '👍';
-    if (score >= 40) return '😐';
-    return '😬';
-  };
+  const allGoodIngredients = Array.from(
+    new Set(nutrition.foodItems.flatMap((item) => item.goodIngredients)),
+  );
 
-  const getScoreColor = (score: number) => {
-    if (score >= 70) return '#4ECDC4';
-    if (score >= 40) return '#FFE66D';
-    return '#FF6B6B';
-  };
+  const allBadIngredients = Array.from(
+    new Set(nutrition.foodItems.flatMap((item) => item.badIngredients)),
+  );
+
+  const score = nutrition.healthScore;
+  const scoreColor = score >= 70 ? theme.card.dailySummary : score >= 40 ? theme.card.yellowAccent : theme.card.fatCard;
+  const toDisplayName = (name: string) => name.replace(/\b\w/g, (c) => c.toUpperCase());
+  const scoreEmoji = score >= 80 ? '🌟' : score >= 60 ? '👍' : score >= 40 ? '😐' : '😬';
+
+  const MACROS = [
+    { label: 'CALORIES', value: Math.round(totalMacros.calories), unit: 'kcal', color: theme.card.fatCard, icon: 'flame' as const },
+    { label: 'PROTEIN', value: Math.round(totalMacros.protein), unit: 'g', color: theme.card.proteinCard, icon: 'barbell' as const },
+    { label: 'CARBS', value: Math.round(totalMacros.carbs), unit: 'g', color: theme.card.yellowAccent, icon: 'leaf' as const },
+    { label: 'FAT', value: Math.round(totalMacros.fat), unit: 'g', color: '#E8D5FF', icon: 'water' as const },
+  ];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -131,179 +101,157 @@ export default function NutritionResultsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Meal Analysis</Text>
-          {mealName ? <Text style={styles.mealName}>{mealName}</Text> : null}
+          <Text style={styles.label}>MEAL ANALYSIS</Text>
+          <Text style={styles.mealName}>{(mealName || nutrition.mealName || 'YOUR MEAL').toUpperCase()}</Text>
         </View>
 
-        <View
-          style={[
-            styles.scoreCard,
-            { backgroundColor: getScoreColor(nutrition.healthScore) },
-          ]}
-        >
-          <View style={styles.scoreCardInner}>
-            <Text style={styles.scoreEmoji}>
-              {getScoreEmoji(nutrition.healthScore)}
-            </Text>
-            <View style={styles.scoreNumbers}>
-              <Text style={styles.scoreBig}>{nutrition.healthScore}</Text>
-              <Text style={styles.scoreMax}>/100</Text>
+        {/* Health Score */}
+        <View style={[styles.scoreCard, { backgroundColor: scoreColor }]}>
+          <View style={styles.scoreLeft}>
+            <Text style={styles.scoreEmoji}>{scoreEmoji}</Text>
+            <View>
+              <Text style={styles.scoreNumber}>{score}</Text>
+              <Text style={styles.scoreOutOf}>OUT OF 100</Text>
             </View>
-            <Text style={styles.scoreLabel}>Health Score</Text>
           </View>
-          <Text style={styles.reasoning}>{nutrition.reasoning}</Text>
-        </View>
-
-        <Text style={styles.sectionTitle}>Nutrition Facts</Text>
-        <View style={styles.macrosGrid}>
-          <View style={[styles.macroCard, styles.calorieCard]}>
-            <Ionicons name="flame" size={24} color="#FF6B6B" />
-            <Text style={styles.macroValue}>
-              {Math.round(totalMacros.calories)}
-            </Text>
-            <Text style={styles.macroLabel}>Calories</Text>
-          </View>
-          <View style={[styles.macroCard, styles.proteinCard]}>
-            <Ionicons name="fish" size={24} color="#4ECDC4" />
-            <Text style={styles.macroValue}>
-              {Math.round(totalMacros.protein)}g
-            </Text>
-            <Text style={styles.macroLabel}>Protein</Text>
-          </View>
-          <View style={[styles.macroCard, styles.carbCard]}>
-            <Ionicons name="leaf" size={24} color="#FFE66D" />
-            <Text style={styles.macroValue}>
-              {Math.round(totalMacros.carbs)}g
-            </Text>
-            <Text style={styles.macroLabel}>Carbs</Text>
-          </View>
-          <View style={[styles.macroCard, styles.fatCard]}>
-            <Ionicons name="water" size={24} color="#A78BFA" />
-            <Text style={styles.macroValue}>
-              {Math.round(totalMacros.fat)}g
-            </Text>
-            <Text style={styles.macroLabel}>Fat</Text>
+          <View style={styles.scoreDivider} />
+          <View style={styles.scoreRight}>
+            <Text style={styles.scoreRightLabel}>HEALTH SCORE</Text>
+            <Text style={styles.scoreReasoning} numberOfLines={4}>{nutrition.reasoning}</Text>
           </View>
         </View>
 
-        {/* Extended Macros */}
-        {(totalMacros.fiber || totalMacros.sugar) && (
-          <View style={styles.extendedMacros}>
-            {totalMacros.fiber ? (
-              <View style={styles.extendedMacroChip}>
-                <Text style={styles.extendedMacroText}>
-                  Fiber {Math.round(totalMacros.fiber)}g
-                </Text>
+        {/* Macro Grid */}
+        <Text style={styles.sectionTitle}>NUTRITION FACTS</Text>
+        <View style={styles.macroGrid}>
+          {MACROS.map((m) => (
+            <View key={m.label} style={[styles.macroCard, { backgroundColor: m.color }]}>
+              <Ionicons name={m.icon} size={22} color={theme.colors.text} />
+              <Text style={styles.macroValue}>{m.value}</Text>
+              <Text style={styles.macroUnit}>{m.unit}</Text>
+              <Text style={styles.macroLabel}>{m.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Fiber / Sugar chips */}
+        {(totalMacros.fiber > 0 || totalMacros.sugar > 0) && (
+          <View style={styles.chipRow}>
+            {totalMacros.fiber > 0 && (
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>🌾  FIBER  {Math.round(totalMacros.fiber)}g</Text>
               </View>
-            ) : null}
-            {totalMacros.sugar ? (
-              <View style={styles.extendedMacroChip}>
-                <Text style={styles.extendedMacroText}>
-                  Sugar {Math.round(totalMacros.sugar)}g
-                </Text>
+            )}
+            {totalMacros.sugar > 0 && (
+              <View style={[styles.chip, { backgroundColor: '#FFE5E5' }]}>
+                <Text style={styles.chipText}>🍬  SUGAR  {Math.round(totalMacros.sugar)}g</Text>
               </View>
-            ) : null}
+            )}
           </View>
         )}
 
-        {nutrition.goodIngredients.length > 0 && (
+        {/* Good Ingredients */}
+        {allGoodIngredients.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="checkmark-circle" size={24} color="#4ECDC4" />
-              <Text style={[styles.sectionTitle, styles.goodTitle]}>
-                Good Stuff
-              </Text>
+              <View style={[styles.sectionBadge, { backgroundColor: '#D1FAE5', borderColor: '#059669' }]}>
+                <Ionicons name="checkmark" size={16} color="#059669" />
+                <Text style={[styles.sectionBadgeText, { color: '#059669' }]}>GOOD STUFF</Text>
+              </View>
             </View>
-            <View style={styles.tagContainer}>
-              {nutrition.goodIngredients.map((ingredient, idx) => (
-                <View key={idx} style={styles.goodTag}>
-                  <Text style={styles.goodTagText}>
-                    {ingredient.replace(/_/g, ' ')}
-                  </Text>
+            <View style={styles.tagRow}>
+              {allGoodIngredients.map((g, i) => (
+                <View key={i} style={styles.goodTag}>
+                  <Text style={styles.goodTagText}>{g.replace(/_/g, ' ')}</Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {nutrition.badIngredients.length > 0 && (
+        {/* Bad Ingredients */}
+        {allBadIngredients.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="warning" size={24} color="#FF6B6B" />
-              <Text style={[styles.sectionTitle, styles.badTitle]}>
-                Watch Out
-              </Text>
+              <View style={[styles.sectionBadge, { backgroundColor: '#FEE2E2', borderColor: '#DC2626' }]}>
+                <Ionicons name="warning" size={16} color="#DC2626" />
+                <Text style={[styles.sectionBadgeText, { color: '#DC2626' }]}>WATCH OUT</Text>
+              </View>
             </View>
-            <View style={styles.tagContainer}>
-              {nutrition.badIngredients.map((ingredient, idx) => (
-                <View key={idx} style={styles.badTag}>
-                  <Text style={styles.badTagText}>
-                    {ingredient.replace(/_/g, ' ')}
-                  </Text>
+            <View style={styles.tagRow}>
+              {allBadIngredients.map((b, i) => (
+                <View key={i} style={styles.badTag}>
+                  <Text style={styles.badTagText}>{b.replace(/_/g, ' ')}</Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
+        {/* Vitamins & Minerals */}
         {allMicros.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons
-                name="sparkles"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Text style={styles.sectionTitle}>Vitamins & Minerals</Text>
+              <View style={[styles.sectionBadge, { backgroundColor: '#EDE9FE', borderColor: '#7C3AED' }]}>
+                <Ionicons name="sparkles" size={16} color="#7C3AED" />
+                <Text style={[styles.sectionBadgeText, { color: '#7C3AED' }]}>VITAMINS & MINERALS</Text>
+              </View>
             </View>
-            <View style={styles.tagContainer}>
-              {allMicros.map((micro, idx) => (
-                <View key={idx} style={styles.microTag}>
-                  <Text style={styles.microTagText}>
-                    {micro.replace(/_/g, ' ')}
-                  </Text>
+            <View style={styles.tagRow}>
+              {allMicros.map((m, i) => (
+                <View key={i} style={styles.microTag}>
+                  <Text style={styles.microTagText}>{m.replace(/_/g, ' ')}</Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
+        {/* Food Items Breakdown */}
         {nutrition.foodItems.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="restaurant" size={24} color={theme.colors.text} />
-              <Text style={styles.sectionTitle}>What We Found</Text>
+              <View style={[styles.sectionBadge, { backgroundColor: theme.card.dailySummary, borderColor: theme.colors.text }]}>
+                <Ionicons name="restaurant" size={16} color={theme.colors.text} />
+                <Text style={styles.sectionBadgeText}>WHAT WE FOUND</Text>
+              </View>
             </View>
-            <View style={styles.foodItemsCard}>
+            <View style={styles.foodCard}>
               {nutrition.foodItems.map((item, idx) => (
-                <View key={idx} style={styles.foodItemRow}>
-                  <Text style={styles.foodItemName}>{item.itemName}</Text>
-                  <Text style={styles.foodItemQty}>{item.amountGrams}g</Text>
+                <View key={idx} style={[styles.foodRow, idx === nutrition!.foodItems.length - 1 && styles.foodRowLast]}>
+                  <View style={styles.foodRowLeft}>
+                    <Text style={styles.foodDot}>●</Text>
+                    <Text style={styles.foodName}>{toDisplayName(item.itemName)}</Text>
+                  </View>
+                  <View style={styles.foodMeta}>
+                    <Text style={styles.foodGrams}>{item.amountGrams}g</Text>
+                    <Text style={styles.foodCals}>{Math.round(item.macros.calories)} kcal</Text>
+                  </View>
                 </View>
               ))}
             </View>
           </View>
         )}
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      <View
-        style={[
-          styles.buttonContainer,
-          { paddingBottom: insets.bottom + theme.spacing.md },
-        ]}
-      >
-        <TouchableOpacity style={styles.discardButton} onPress={handleDiscard}>
-          <Text style={styles.discardButtonText}>Discard</Text>
+      {/* Bottom Buttons */}
+      <View style={[styles.buttonRow, { paddingBottom: insets.bottom + theme.spacing.md }]}>
+        <TouchableOpacity style={styles.discardBtn} onPress={() => router.replace('/')}>
+          <Ionicons name="trash-outline" size={20} color={theme.colors.text} />
+          <Text style={styles.discardText}>DISCARD</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[styles.saveButton, saved && styles.savedButton]}
+          style={[styles.saveBtn, saved && styles.savedBtn]}
           onPress={handleSave}
           disabled={saving || saved}
         >
-          <Text style={styles.saveButtonText}>
-            {saving ? 'Saving...' : saved ? 'Saved' : 'Save Meal'}
+          <Ionicons name={saved ? 'checkmark-circle' : 'bookmark'} size={20} color={theme.colors.text} />
+          <Text style={styles.saveBtnText}>
+            {saving ? 'SAVING...' : saved ? 'SAVED!' : 'SAVE MEAL'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -316,98 +264,114 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  scrollView: {
-    flex: 1,
-  },
+  scrollView: { flex: 1 },
   scrollContent: {
     padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl,
   },
+
+  // Header
   header: {
     marginBottom: theme.spacing.lg,
   },
-  title: {
+  label: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textTertiary,
+    letterSpacing: 3,
+    marginBottom: theme.spacing.xs,
+  },
+  mealName: {
     fontSize: theme.typography.fontSize['3xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
+    letterSpacing: 1,
   },
-  mealName: {
-    fontSize: theme.typography.fontSize.lg,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
-  },
-  // Health Score Card
+
+  // Score Card
   scoreCard: {
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: 4,
-    borderColor: theme.colors.text,
+    flexDirection: 'row',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.12)',
+    borderRadius: theme.borderRadius['2xl'],
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 5,
-  },
-  scoreCardInner: {
-    flexDirection: 'row',
+    gap: theme.spacing.lg,
     alignItems: 'center',
+  },
+  scoreLeft: {
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  scoreEmoji: { fontSize: 36 },
+  scoreNumber: {
+    fontSize: theme.typography.fontSize['7xl'],
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    lineHeight: 80,
+  },
+  scoreOutOf: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: 'rgba(0,0,0,0.4)',
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  scoreDivider: {
+    width: 3,
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: 2,
+  },
+  scoreRight: {
+    flex: 1,
+    gap: theme.spacing.sm,
+  },
+  scoreRightLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: 'rgba(0,0,0,0.4)',
+    letterSpacing: 2,
+  },
+  scoreReasoning: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text,
+    lineHeight: 20,
+  },
+
+  // Section
+  sectionTitle: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textTertiary,
+    letterSpacing: 3,
     marginBottom: theme.spacing.md,
   },
-  scoreEmoji: {
-    fontSize: 40,
-    marginRight: theme.spacing.md,
-  },
-  scoreNumbers: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    flex: 1,
-  },
-  scoreBig: {
-    fontSize: 48,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-  },
-  scoreMax: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: 'rgba(0,0,0,0.3)',
-    marginLeft: 4,
-  },
-  scoreLabel: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.sm,
-    overflow: 'hidden',
-  },
-  reasoning: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text,
-    lineHeight: 22,
-    opacity: 0.8,
-  },
-  // Section
   section: {
     marginBottom: theme.spacing.xl,
   },
   sectionHeader: {
+    marginBottom: theme.spacing.md,
+  },
+  sectionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    gap: theme.spacing.xs,
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 2,
   },
-  sectionTitle: {
-    fontSize: theme.typography.fontSize.xl,
+  sectionBadgeText: {
+    fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.bold,
+    letterSpacing: 1,
     color: theme.colors.text,
-    marginBottom: theme.spacing.md,
   },
-  // Macros Grid
-  macrosGrid: {
+
+  // Macro Grid
+  macroGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
@@ -416,207 +380,225 @@ const styles = StyleSheet.create({
   macroCard: {
     flex: 1,
     minWidth: '47%',
-    backgroundColor: theme.colors.card,
     padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 3,
-    borderColor: theme.colors.text,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
     alignItems: 'center',
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
-  },
-  calorieCard: {
-    backgroundColor: '#FFE5E5',
-  },
-  proteinCard: {
-    backgroundColor: '#E5FFF9',
-  },
-  carbCard: {
-    backgroundColor: '#FFFDE5',
-  },
-  fatCard: {
-    backgroundColor: '#F3E8FF',
+    gap: theme.spacing.xs,
   },
   macroValue: {
-    fontSize: theme.typography.fontSize['2xl'],
+    fontSize: theme.typography.fontSize['3xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
-    marginTop: theme.spacing.xs,
+  },
+  macroUnit: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: 'rgba(0,0,0,0.4)',
+    marginTop: -theme.spacing.xs,
   },
   macroLabel: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    letterSpacing: 2,
   },
-  extendedMacros: {
+
+  // Chips
+  chipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+    flexWrap: 'wrap',
   },
-  extendedMacroChip: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.full,
+  chip: {
+    backgroundColor: '#E5FFE5',
     borderWidth: 2,
     borderColor: theme.colors.text,
+    borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
-  extendedMacroText: {
+  chipText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
+    letterSpacing: 1,
   },
+
   // Tags
-  tagContainer: {
+  tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
   goodTag: {
     backgroundColor: '#D1FAE5',
-    borderRadius: theme.borderRadius.full,
     borderWidth: 2,
     borderColor: '#059669',
+    borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
   goodTagText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontWeight: theme.typography.fontWeight.bold,
     color: '#059669',
     textTransform: 'capitalize',
   },
   badTag: {
     backgroundColor: '#FEE2E2',
-    borderRadius: theme.borderRadius.full,
     borderWidth: 2,
     borderColor: '#DC2626',
+    borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
   badTagText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
+    fontWeight: theme.typography.fontWeight.bold,
     color: '#DC2626',
     textTransform: 'capitalize',
   },
   microTag: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.full,
+    backgroundColor: '#EDE9FE',
     borderWidth: 2,
-    borderColor: theme.colors.primary,
+    borderColor: '#7C3AED',
+    borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
   microTagText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.primary,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: '#7C3AED',
     textTransform: 'capitalize',
   },
-  badTitle: {
-    color: '#DC2626',
-    marginBottom: 0,
-  },
-  goodTitle: {
-    color: '#059669',
-    marginBottom: 0,
-  },
+
   // Food Items
-  foodItemsCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 3,
-    borderColor: theme.colors.text,
-    padding: theme.spacing.md,
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
+  foodCard: {
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
+    borderRadius: theme.borderRadius.xl,
+    overflow: 'hidden',
   },
-  foodItemRow: {
+  foodRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.card,
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.text,
   },
-  foodItemName: {
+  foodRowLast: {
+    borderBottomWidth: 0,
+  },
+  foodRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    flex: 1,
+  },
+  foodDot: {
+    fontSize: 8,
+    color: theme.colors.textTertiary,
+  },
+  foodName: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
     flex: 1,
   },
-  foodItemQty: {
+  foodMeta: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  foodGrams: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textSecondary,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: theme.borderRadius.xs,
+    overflow: 'hidden',
   },
-  errorText: {
-    fontSize: theme.typography.fontSize.lg,
-    color: theme.colors.error,
-    textAlign: 'center',
-    marginTop: theme.spacing.xl,
+  foodCals: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.text,
+    backgroundColor: theme.card.fatCard,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.xs,
+    overflow: 'hidden',
   },
+
   // Buttons
-  buttonContainer: {
+  buttonRow: {
     flexDirection: 'row',
     gap: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
     backgroundColor: theme.colors.background,
   },
-  discardButton: {
+  discardBtn: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
     paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
     borderWidth: 3,
     borderColor: theme.colors.text,
-    backgroundColor: theme.colors.background,
-    alignItems: 'center',
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface,
     shadowColor: theme.colors.text,
     shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 3,
   },
-  discardButtonText: {
-    fontSize: theme.typography.fontSize.lg,
+  discardText: {
+    fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
+    letterSpacing: 1,
   },
-  saveButton: {
+  saveBtn: {
     flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
     paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
     borderWidth: 3,
     borderColor: theme.colors.text,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.card.yellowAccent,
     shadowColor: theme.colors.text,
     shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 3,
   },
-  savedButton: {
-    backgroundColor: '#4ECDC4',
+  savedBtn: {
+    backgroundColor: theme.card.dailySummary,
   },
-  saveButtonText: {
-    fontSize: theme.typography.fontSize.lg,
+  saveBtnText: {
+    fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
+    letterSpacing: 1,
+  },
+  errorText: {
+    fontSize: theme.typography.fontSize.lg,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginTop: theme.spacing.xl,
   },
 });

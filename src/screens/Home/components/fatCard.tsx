@@ -1,29 +1,29 @@
 import React from "react";
 import { View, Text, Dimensions, StyleSheet } from "react-native";
-import { theme } from "../../theme";
-import CardComponent from "./cardComponent";
+import { theme } from "@/src/theme";
+import CardComponent from "@/src/components/Cards/cardComponent";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - theme.spacing.md * 2;
 const SMALL_CARD_HEIGHT = 120;
 const SMALL_CARD_WIDTH = (CARD_WIDTH - theme.spacing.sm * 2) / 3;
 
-interface ProteinCardProps {
+interface FatCardProps {
   value?: number;
   onPress?: () => void;
 }
 
-export default function ProteinCard({ value = 0, onPress }: ProteinCardProps) {
+export default function FatCard({ value = 0, onPress }: FatCardProps) {
   return (
     <CardComponent
       height={SMALL_CARD_HEIGHT}
       width={SMALL_CARD_WIDTH}
-      backgroundColor={theme.card.proteinCard}
+      backgroundColor={theme.card.fatCard}
       padding={theme.spacing.sm}
       onPress={onPress}
     >
       <View style={styles.container}>
-        <Text style={styles.label}>PROTEIN</Text>
+        <Text style={styles.label}>FAT</Text>
         <View style={styles.valueContainer}>
           <Text style={styles.value}>{Math.round(value)}</Text>
           <Text style={styles.unit}>g</Text>

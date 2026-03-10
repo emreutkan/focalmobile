@@ -1,9 +1,9 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import DailySummaryCard from "@/src/components/Cards/dailySummaryCard";
-import ProteinCard from "@/src/components/Cards/proteinCard";
-import CarbCard from "@/src/components/Cards/carbCard";
-import FatCard from "@/src/components/Cards/fatCard";
+import DailySummaryCard from "./dailySummaryCard";
+import ProteinCard from "./proteinCard";
+import CarbCard from "./carbCard";
+import FatCard from "./fatCard";
 import { theme } from "@/src/theme";
 
 interface MiddleSectionProps {
