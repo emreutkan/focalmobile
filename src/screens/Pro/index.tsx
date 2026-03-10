@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,53 +22,17 @@ import Animated, {
   FadeInDown,
   FadeInUp,
 } from 'react-native-reanimated';
-import { theme } from '@/src/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { Theme } from '@/src/theme';
 import * as Haptics from 'expo-haptics';
 import { useUserStore } from '@/src/hooks/userStore';
 import PremiumCelebration from './components/PremiumCelebration';
 
 const { width, height } = Dimensions.get('window');
 
-const PRO_FEATURES = [
-  {
-    icon: 'infinite-outline' as const,
-    title: 'UNLIMITED SCANS',
-    description: 'No daily limits. Scan everything.',
-    color: theme.card.dailySummary,
-  },
-  {
-    icon: 'analytics-outline' as const,
-    title: 'DEEP INSIGHTS',
-    description: 'Trends, patterns, and smart analytics.',
-    color: theme.card.proteinCard,
-  },
-  {
-    icon: 'cloud-outline' as const,
-    title: 'CLOUD SYNC',
-    description: 'Your data, everywhere you go.',
-    color: theme.card.carbCard,
-  },
-  {
-    icon: 'flash-outline' as const,
-    title: 'PRIORITY AI',
-    description: 'Lightning-fast food analysis.',
-    color: theme.card.fatCard,
-  },
-  {
-    icon: 'restaurant-outline' as const,
-    title: 'SMART RECIPES',
-    description: 'Personalized meal suggestions.',
-    color: theme.card.yellowAccent,
-  },
-  {
-    icon: 'notifications-outline' as const,
-    title: 'SMART REMINDERS',
-    description: 'Never miss a meal again.',
-    color: theme.colors.textSecondary,
-  },
-];
-
 function FloatingOrb({ delay, startX, startY, color }: { delay: number; startX: number; startY: number; color: string }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const translateY = useSharedValue(0);
   const translateX = useSharedValue(0);
   const scale = useSharedValue(0);
@@ -118,7 +82,9 @@ function FloatingOrb({ delay, startX, startY, color }: { delay: number; startX: 
   );
 }
 
-function FeatureCard({ feature, index }: { feature: typeof PRO_FEATURES[0]; index: number }) {
+function FeatureCard({ feature, index }: { feature: any; index: number }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const scale = useSharedValue(1);
 
   const handlePressIn = () => {
@@ -177,6 +143,8 @@ function PricingCard({
   onPress: () => void;
   index: number;
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const scale = useSharedValue(1);
   const shadowOffset = useSharedValue(8);
 
@@ -248,10 +216,51 @@ function PricingCard({
 
 export default function ProScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const setIsPro = useUserStore((state) => state.setIsPro);
   const [showCelebration, setShowCelebration] = React.useState(false);
   const pulseAnim = useSharedValue(1);
   const glowAnim = useSharedValue(0);
+
+  const PRO_FEATURES = useMemo(() => [
+    {
+      icon: 'infinite-outline' as const,
+      title: 'UNLIMITED SCANS',
+      description: 'No daily limits. Scan everything.',
+      color: theme.card.dailySummary,
+    },
+    {
+      icon: 'analytics-outline' as const,
+      title: 'DEEP INSIGHTS',
+      description: 'Trends, patterns, and smart analytics.',
+      color: theme.card.proteinCard,
+    },
+    {
+      icon: 'cloud-outline' as const,
+      title: 'CLOUD SYNC',
+      description: 'Your data, everywhere you go.',
+      color: theme.card.carbCard,
+    },
+    {
+      icon: 'flash-outline' as const,
+      title: 'PRIORITY AI',
+      description: 'Lightning-fast food analysis.',
+      color: theme.card.fatCard,
+    },
+    {
+      icon: 'restaurant-outline' as const,
+      title: 'SMART RECIPES',
+      description: 'Personalized meal suggestions.',
+      color: theme.card.yellowAccent,
+    },
+    {
+      icon: 'notifications-outline' as const,
+      title: 'SMART REMINDERS',
+      description: 'Never miss a meal again.',
+      color: theme.colors.textSecondary,
+    },
+  ], [theme]);
 
   useEffect(() => {
     pulseAnim.value = withRepeat(
@@ -446,7 +455,7 @@ export default function ProScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

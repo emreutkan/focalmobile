@@ -127,6 +127,13 @@ export async function checkHealth(): Promise<boolean> {
   }
 }
 
+export class RateLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RateLimitError';
+  }
+}
+
 export async function analyzeImage(imageUris: string | string[]): Promise<AnalyzeImageResponse> {
   const headers = await getAuthHeader();
   const uris = Array.isArray(imageUris) ? imageUris : [imageUris];
@@ -155,7 +162,11 @@ export async function analyzeImage(imageUris: string | string[]): Promise<Analyz
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message ?? `Analyze image failed: ${res.status}`);
+    const message = err.message ?? `Analyze image failed: ${res.status}`;
+    if (res.status === 429) {
+      throw new RateLimitError(message);
+    }
+    throw new Error(message);
   }
 
   return res.json();
@@ -176,7 +187,11 @@ export async function analyzeItems(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message ?? `Analyze items failed: ${res.status}`);
+    const message = err.message ?? `Analyze items failed: ${res.status}`;
+    if (res.status === 429) {
+      throw new RateLimitError(message);
+    }
+    throw new Error(message);
   }
 
   return res.json();

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -49,6 +50,8 @@ export default function MacroBreakdownModal({
   circleColor,
   progressColor,
 }: MacroBreakdownModalProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const blurIntensity = useSharedValue(50);
 
@@ -157,7 +160,7 @@ export default function MacroBreakdownModal({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: "flex-end",

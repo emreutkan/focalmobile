@@ -1,8 +1,13 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
+import React, { useMemo } from "react";
+
 export default function TopBar() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
   const today = new Date();
   const month = today.toLocaleDateString('en-US', { month: 'long' });
@@ -29,7 +34,7 @@ export default function TopBar() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',

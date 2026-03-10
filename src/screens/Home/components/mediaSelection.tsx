@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Modal } from "react-native";
 import * as Haptics from "expo-haptics";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import CardComponent from "@/src/components/Cards/cardComponent";
@@ -31,6 +32,8 @@ export function MediaSelection({
   setPermissionType,
   compact = false
 }: MediaSelectionProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
     const handleGallerySelect = useCallback(async () => {
 
@@ -198,7 +201,7 @@ export function MediaSelection({
   )
 };
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',

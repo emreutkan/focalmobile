@@ -1,24 +1,29 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { theme } from '@/src/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { Theme } from '@/src/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '@/src/components/LoadingScreen';
 import CardComponent from '@/src/components/Cards/cardComponent';
-import { analyzeImage } from '@/src/services/mealService';
+import { analyzeImage, RateLimitError } from '@/src/services/mealService';
+import { useUserStore } from '@/src/hooks/userStore';
 
 const { width } = Dimensions.get('window');
-const SIDE_BUTTON_WIDTH = Math.floor((width - theme.spacing.lg * 2 - theme.spacing.md) / 2) - 8;
-
 const ERROR_FACES = ['😵‍💫', '🫠', '🤷‍♂️', '😬', '🙈'];
 
 export default function ImageAnalyzer() {
   const { imageUri, imageUris } = useLocalSearchParams<{ imageUri?: string; imageUris?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const isPro = useUserStore((state) => state.isPro);
+
+  const SIDE_BUTTON_WIDTH = useMemo(() => Math.floor((width - theme.spacing.lg * 2 - theme.spacing.md) / 2) - 8, [theme.spacing.lg, theme.spacing.md]);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string>('');
@@ -83,11 +88,27 @@ export default function ImageAnalyzer() {
       });
     } catch (err: any) {
       console.error('Error analyzing image:', err);
+      if (err instanceof RateLimitError) {
+        setAnalyzing(false);
+        if (isPro) {
+          Alert.alert("Limit Reached", "You've used all 30 scans for today. Come back tomorrow!", [{ text: "OK", onPress: () => router.back() }]);
+        } else {
+          Alert.alert(
+            "Daily Limit Reached", 
+            "Free users get 3 scans per day. Upgrade to Pro for 30 scans!",
+            [
+              { text: "Maybe Later", style: "cancel", onPress: () => router.back() },
+              { text: "View Pro", onPress: () => router.push('/pro') }
+            ]
+          );
+        }
+        return;
+      }
       setError("Something went wrong! Let's give it another shot.");
     } finally {
       setAnalyzing(false);
     }
-  }, [uris, analyzing, router]);
+  }, [uris, analyzing, router, isPro]);
 
   // Auto-analyze when entering screen
   useEffect(() => {
@@ -198,7 +219,7 @@ export default function ImageAnalyzer() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

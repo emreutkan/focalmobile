@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from "react-native-reanimated";
-import { View, Text } from "react-native";
-import { theme } from "../theme";
-import { StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { useTheme } from "../contexts/ThemeContext";
+import { Theme } from "../theme";
 
 export default function LoadingSplash() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const bounceValue = useSharedValue(0);
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function LoadingSplash() {
 }
 
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

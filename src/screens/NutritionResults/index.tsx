@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { theme } from '@/src/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { Theme } from '@/src/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { type AnalyzeItemsResponse } from '@/src/services/mealService';
@@ -14,6 +15,8 @@ export default function NutritionResultsScreen() {
   }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { theme, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const saveMealMutation = useSaveMeal();
   const saving = saveMealMutation.isPending;
   const saved = saveMealMutation.isSuccess;
@@ -145,7 +148,7 @@ export default function NutritionResultsScreen() {
               </View>
             )}
             {totalMacros.sugar > 0 && (
-              <View style={[styles.chip, { backgroundColor: '#FFE5E5' }]}>
+              <View style={[styles.chip, { backgroundColor: isDark ? theme.colors.errorActive : '#FFE5E5' }]}>
                 <Text style={styles.chipText}>🍬  SUGAR  {Math.round(totalMacros.sugar)}g</Text>
               </View>
             )}
@@ -156,7 +159,7 @@ export default function NutritionResultsScreen() {
         {allGoodIngredients.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionBadge, { backgroundColor: '#D1FAE5', borderColor: '#059669' }]}>
+              <View style={[styles.sectionBadge, { backgroundColor: isDark ? '#064e3b' : '#D1FAE5', borderColor: '#059669' }]}>
                 <Ionicons name="checkmark" size={16} color="#059669" />
                 <Text style={[styles.sectionBadgeText, { color: '#059669' }]}>GOOD STUFF</Text>
               </View>
@@ -175,7 +178,7 @@ export default function NutritionResultsScreen() {
         {allBadIngredients.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionBadge, { backgroundColor: '#FEE2E2', borderColor: '#DC2626' }]}>
+              <View style={[styles.sectionBadge, { backgroundColor: isDark ? '#7f1d1d' : '#FEE2E2', borderColor: '#DC2626' }]}>
                 <Ionicons name="warning" size={16} color="#DC2626" />
                 <Text style={[styles.sectionBadgeText, { color: '#DC2626' }]}>WATCH OUT</Text>
               </View>
@@ -194,7 +197,7 @@ export default function NutritionResultsScreen() {
         {allMicros.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionBadge, { backgroundColor: '#EDE9FE', borderColor: '#7C3AED' }]}>
+              <View style={[styles.sectionBadge, { backgroundColor: isDark ? '#4c1d95' : '#EDE9FE', borderColor: '#7C3AED' }]}>
                 <Ionicons name="sparkles" size={16} color="#7C3AED" />
                 <Text style={[styles.sectionBadgeText, { color: '#7C3AED' }]}>VITAMINS & MINERALS</Text>
               </View>
@@ -259,7 +262,7 @@ export default function NutritionResultsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

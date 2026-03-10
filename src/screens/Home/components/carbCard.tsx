@@ -1,12 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, Dimensions, StyleSheet } from "react-native";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import CardComponent from "@/src/components/Cards/cardComponent";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width - theme.spacing.md * 2;
-const SMALL_CARD_HEIGHT = 120;
-const SMALL_CARD_WIDTH = (CARD_WIDTH - theme.spacing.sm * 2) / 3;
 
 interface CarbCardProps {
   value?: number;
@@ -14,6 +12,13 @@ interface CarbCardProps {
 }
 
 export default function CarbCard({ value = 0, onPress }: CarbCardProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
+  const CARD_WIDTH = width - theme.spacing.md * 2;
+  const SMALL_CARD_HEIGHT = 120;
+  const SMALL_CARD_WIDTH = (CARD_WIDTH - theme.spacing.sm * 2) / 3;
+
   return (
     <CardComponent
       height={SMALL_CARD_HEIGHT}
@@ -36,7 +41,7 @@ export default function CarbCard({ value = 0, onPress }: CarbCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'space-between',

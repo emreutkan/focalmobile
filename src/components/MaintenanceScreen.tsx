@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
-import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import { Theme } from '../theme';
 
 const STATUSES = [
   { emoji: '🍕', text: 'Reheating the servers...' },
@@ -14,6 +15,8 @@ const STATUSES = [
 ];
 
 export default function MaintenanceScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const wiggleAnim = useRef(new Animated.Value(0)).current;
   const [statusIndex, setStatusIndex] = useState(0);
@@ -76,7 +79,7 @@ export default function MaintenanceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

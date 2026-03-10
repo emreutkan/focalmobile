@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,8 @@ import Animated, {
   Extrapolation,
   SharedValue,
 } from 'react-native-reanimated';
-import { theme } from '@/src/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { Theme } from '@/src/theme';
 import { useUserStore } from '@/src/hooks/userStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -65,6 +66,8 @@ const SLIDES: OnboardingSlide[] = [
 
 export default function OnboardingScreen() {
   const { top, bottom } = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useSharedValue(0);
@@ -115,7 +118,7 @@ export default function OnboardingScreen() {
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <View style={[styles.container, { backgroundColor: currentSlide.backgroundColor }]}>
         {/* Skip Button */}
         <TouchableOpacity
@@ -153,6 +156,7 @@ export default function OnboardingScreen() {
                 key={index}
                 index={index}
                 currentIndex={currentIndex}
+                styles={styles}
               />
             ))}
           </View>
@@ -183,6 +187,8 @@ interface SlideItemProps {
 }
 
 function SlideItem({ item, index, scrollX }: SlideItemProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const inputRange = [
     (index - 1) * SCREEN_WIDTH,
     index * SCREEN_WIDTH,
@@ -299,9 +305,10 @@ function SlideItem({ item, index, scrollX }: SlideItemProps) {
 interface PaginationDotProps {
   index: number;
   currentIndex: number;
+  styles: any;
 }
 
-function PaginationDot({ index, currentIndex }: PaginationDotProps) {
+function PaginationDot({ index, currentIndex, styles }: PaginationDotProps) {
   const isActive = index === currentIndex;
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -318,7 +325,7 @@ function PaginationDot({ index, currentIndex }: PaginationDotProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
   },

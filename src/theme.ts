@@ -234,6 +234,6 @@ export const darkTheme = {
   }
 };
 
-// Default export for backward compatibility during migration
-export const theme = lightTheme;
+// Default export for backward compatibility removed. 
+// Use useTheme() hook from ThemeContext instead.
 export type Theme = typeof lightTheme;

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 interface Meal {
@@ -21,6 +22,9 @@ interface MealsSectionProps {
 }
 
 export default function MealsSection({ meals, onDeleteMeal }: MealsSectionProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   const getMealName = (meal: Meal) => {
     // First try meal_name from database
     if (meal.meal_name) {
@@ -33,7 +37,7 @@ export default function MealsSection({ meals, onDeleteMeal }: MealsSectionProps)
     return "Meal";
   };
 
-  const getHealthColor = (score: number) => {
+  const getHealthColor = (theme: Theme, score: number) => {
     if (score >= 70) return theme.colors.success || "#4ECDC4";
     if (score >= 40) return theme.colors.warning || "#FFE66D";
     return theme.colors.error || "#FF6B6B";
@@ -65,7 +69,7 @@ export default function MealsSection({ meals, onDeleteMeal }: MealsSectionProps)
 
       {meals.map((meal) => (
         <View key={meal.id} style={styles.mealCard}>
-          <View style={[styles.healthBadge, { backgroundColor: getHealthColor(meal.health_score) }]}>
+          <View style={[styles.healthBadge, { backgroundColor: getHealthColor(theme, meal.health_score) }]}>
             <Text style={styles.healthBadgeText}>{Math.round(meal.health_score)}</Text>
           </View>
           <View style={styles.mealInfo}>
@@ -93,7 +97,7 @@ export default function MealsSection({ meals, onDeleteMeal }: MealsSectionProps)
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.xl,
