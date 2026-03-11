@@ -80,7 +80,6 @@ export default function SettingsScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>SETTINGS</Text>
-        <View style={styles.backButton} />
       </View>
 
       <ScrollView

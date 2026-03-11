@@ -49,6 +49,7 @@ export default function RootLayout() {
           <Stack.Screen name="settings" />
           <Stack.Screen name="foodReview" />
           <Stack.Screen name="nutritionResults" />
+          <Stack.Screen name="mealDetail" />
         </Stack>
       </AuthGate>
     </SafeAreaProvider>

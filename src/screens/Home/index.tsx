@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import { MediaPermission } from "./components/mediaPermission";
 import { ShowImage } from "./components/showImage";
 import { useMealsToday, useDeleteMeal } from "@/src/hooks/useMealQueries";
+import { HomeSkeleton } from "@/src/components/Skeletons";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function HomeScreen() {
       scrollY.value = event.contentOffset.y;
     },
   });
-    const { data: mealsData, refetch, isRefetching } = useMealsToday();
+    const { data: mealsData, refetch, isRefetching, isLoading } = useMealsToday();
     const deleteMealMutation = useDeleteMeal();
 
     const meals = (mealsData?.meals ?? []).map(m => ({
@@ -42,19 +43,31 @@ export default function HomeScreen() {
       fat: m.foodItems.reduce((acc, item) => acc + item.macros.fat, 0),
       health_score: m.healthScore,
       created_at: m.createdAt,
-      foodItems: m.foodItems.map(fi => ({ name: fi.itemName }))
+      foodItems: m.foodItems.map(fi => ({ 
+        name: fi.itemName,
+        macros: fi.macros,
+        micros: fi.micros
+      }))
     }));
 
-    const dailyTotals = {
-      total_calories: mealsData?.dailyTotals.calories ?? 0,
-      total_protein: mealsData?.dailyTotals.protein ?? 0,
-      total_carbs: mealsData?.dailyTotals.carbs ?? 0,
-      total_fat: mealsData?.dailyTotals.fat ?? 0,
+    const dailyTotals = mealsData?.dailyTotals ?? {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      saturatedFat: 0,
+      cholesterol: 0,
+      sodium: 0,
+      micros: [],
+      animalProtein: 0,
+      plantProtein: 0,
     };
 
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
-    const [modalType, setModalType] = useState<'calories' | 'protein' | 'carbs' | 'fat'>('calories');
+    const [modalType, setModalType] = useState<string>('calories');
     const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
     const [galleryPermission, setGalleryPermission] = useState<boolean | null>(null);
     const [showPermissionModal, setShowPermissionModal] = useState(false);
@@ -81,15 +94,74 @@ export default function HomeScreen() {
         await refetch();
     }, [refetch]);
 
-    const handleCardPress = useCallback(async (type: 'calories' | 'protein' | 'carbs' | 'fat') => {
+    const handleCardPress = useCallback(async (type: string) => {
       try {
-        // await deleteMeal(mealId);
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setModalType(type);
+        setModalVisible(true);
       } catch (error) {
-        console.error('Error deleting meal:', error);
-        Alert.alert('Error', 'Failed to delete meal');
+        console.error('Error opening breakdown:', error);
       }
     }, []);
+
+    const breakdownItems = useMemo(() => {
+      if (!mealsData?.meals) return [];
+      const items: { name: string; value: number; time: string }[] = [];
+      
+      // Use the raw mealsData from the query since it has the full macros/micros payload
+      mealsData.meals.forEach(meal => {
+        const date = new Date(meal.createdAt);
+        const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        meal.foodItems.forEach(food => {
+          let value = 0;
+          if (modalType === 'calories') value = food.macros?.calories ?? 0;
+          else if (modalType === 'protein') value = food.macros?.protein ?? 0;
+          else if (modalType === 'carbs') value = food.macros?.carbs ?? 0;
+          else if (modalType === 'fat') value = food.macros?.fat ?? 0;
+          else if (modalType === 'fiber') value = food.macros?.fiber ?? 0;
+          else if (modalType === 'sugar') value = food.macros?.sugar ?? 0;
+          else if (modalType === 'saturatedFat') value = food.macros?.saturatedFat ?? 0;
+          else if (modalType === 'cholesterol') value = food.macros?.cholesterol ?? 0;
+          else if (modalType === 'sodium') value = food.macros?.sodium ?? 0;
+          else {
+            const micro = food.micros?.find((m: any) => m.name === modalType);
+            if (micro) value = micro.amount;
+          }
+
+          if (value > 0) {
+            items.push({ name: food.itemName, value, time });
+          }
+        });
+      });
+      return items.sort((a, b) => b.value - a.value); // sort by highest contributor first
+    }, [mealsData, modalType]);
+
+    const modalProps = useMemo(() => {
+      let title = `${modalType.toUpperCase()} BREAKDOWN`;
+      let total = 0;
+      let unit = 'g';
+      let color = theme.card.dailySummary;
+
+      if (modalType === 'calories') { total = dailyTotals.calories; unit = 'kcal'; color = theme.card.dailySummary; }
+      else if (modalType === 'protein') { total = dailyTotals.protein; color = theme.card.proteinCard; }
+      else if (modalType === 'carbs') { total = dailyTotals.carbs; color = theme.card.carbCard; }
+      else if (modalType === 'fat') { total = dailyTotals.fat; color = theme.card.fatCard; }
+      else if (modalType === 'fiber') { total = dailyTotals.fiber; color = theme.colors.primary; }
+      else if (modalType === 'sugar') { total = dailyTotals.sugar; color = theme.colors.primary; }
+      else if (modalType === 'saturatedFat') { total = dailyTotals.saturatedFat; title = 'SAT FAT BREAKDOWN'; color = theme.colors.primary; }
+      else if (modalType === 'cholesterol') { total = dailyTotals.cholesterol; unit = 'mg'; color = theme.colors.primary; }
+      else if (modalType === 'sodium') { total = dailyTotals.sodium; unit = 'mg'; color = theme.colors.primary; }
+      else {
+        const micro = dailyTotals.micros?.find(m => m.name === modalType);
+        if (micro) {
+          total = micro.amount;
+          unit = micro.unit;
+          title = `${modalType.replace(/_/g, ' ').toUpperCase()} BREAKDOWN`;
+          color = theme.colors.primary;
+        }
+      }
+      return { title, total, unit, color };
+    }, [modalType, dailyTotals, theme]);
 
     const handleDeleteMeal = useCallback(async (mealId: string) => {
       Alert.alert(
@@ -176,27 +248,33 @@ export default function HomeScreen() {
                 <Animated.ScrollView
                   scrollEventThrottle={16}
                   contentContainerStyle={{
-                    flex: 1,
+                    flexGrow: 1,
                     paddingTop: top,
                   }}
                   onScroll={scrollHandler}
+                  alwaysBounceVertical={true}
+                  overScrollMode="always"
                   refreshControl={
                     <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} />
                   }
 
                 >
                   <TopBar />
-                  <MiddleSection
-                    calories={dailyTotals.total_calories}
-                    protein={dailyTotals.total_protein}
-                    carbs={dailyTotals.total_carbs}
-                    fat={dailyTotals.total_fat}
-                    onCaloriesPress={() => handleCardPress('calories')}
-                    onProteinPress={() => handleCardPress('protein')}
-                    onCarbsPress={() => handleCardPress('carbs')}
-                    onFatPress={() => handleCardPress('fat')}
-                  />
-                  <MealsSection meals={meals} onDeleteMeal={handleDeleteMeal} />
+                  {isLoading ? (
+                    <HomeSkeleton />
+                  ) : (
+                    <>
+                      <MiddleSection
+                        dailyTotals={dailyTotals}
+                        onCaloriesPress={() => handleCardPress('calories')}
+                        onProteinPress={() => handleCardPress('protein')}
+                        onCarbsPress={() => handleCardPress('carbs')}
+                        onFatPress={() => handleCardPress('fat')}
+                        onNutrientPress={(nutrient) => handleCardPress(nutrient)}
+                      />
+                      <MealsSection meals={meals} onDeleteMeal={handleDeleteMeal} />
+                    </>
+                  )}
                 </Animated.ScrollView>
 
                 <View style={[styles.floatingButtonContainer, { bottom: bottom + theme.spacing.xl }]}>
@@ -233,38 +311,13 @@ export default function HomeScreen() {
                 <MacroBreakdownModal
                   visible={modalVisible}
                   onClose={() => setModalVisible(false)}
-                  title={
-                    modalType === 'calories' ? 'CALORIES BREAKDOWN' :
-                    modalType === 'protein' ? 'PROTEIN BREAKDOWN' :
-                    modalType === 'carbs' ? 'CARBS BREAKDOWN' :
-                    'FAT BREAKDOWN'
-                  }
-                  total={
-                    modalType === 'calories' ? dailyTotals.total_calories :
-                    modalType === 'protein' ? dailyTotals.total_protein :
-                    modalType === 'carbs' ? dailyTotals.total_carbs :
-                    dailyTotals.total_fat
-                  }
-                  unit={modalType === 'calories' ? 'kcal' : 'g'}
-                  items={[]}
-                  headerColor={
-                    modalType === 'calories' ? theme.card.dailySummary :
-                    modalType === 'protein' ? theme.card.proteinCard :
-                    modalType === 'carbs' ? theme.card.carbCard :
-                    theme.card.fatCard
-                  }
-                  circleColor={
-                    modalType === 'calories' ? theme.card.dailySummary :
-                    modalType === 'protein' ? theme.card.proteinCard :
-                    modalType === 'carbs' ? theme.card.carbCard :
-                    theme.card.fatCard
-                  }
-                  progressColor={
-                    modalType === 'calories' ? theme.card.dailySummary :
-                    modalType === 'protein' ? theme.card.proteinCard :
-                    modalType === 'carbs' ? theme.card.carbCard :
-                    theme.card.fatCard
-                  }
+                  title={modalProps.title}
+                  total={modalProps.total}
+                  unit={modalProps.unit}
+                  items={breakdownItems}
+                  headerColor={modalProps.color}
+                  circleColor={modalProps.color}
+                  progressColor={modalProps.color}
                 />
                 {selectedImages.length > 0 && !showMediaSelection && <ShowImage selectedImages={selectedImages} handleCancel={handleCancel} handleGoodToGo={handleGoodToGo} onAddMore={handleAddMore} onRemoveImage={handleRemoveImage} />}
             </View>

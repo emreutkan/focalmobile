@@ -12,6 +12,7 @@ import CardComponent from '@/src/components/Cards/cardComponent';
 import { analyzeImage, RateLimitError, AuthError } from '@/src/services/mealService';
 import { supabase } from '@/src/lib/supabase';
 import { useUserStore } from '@/src/hooks/userStore';
+import { ImageAnalyzerSkeleton } from '@/src/components/Skeletons';
 
 const { width } = Dimensions.get('window');
 const ERROR_FACES = ['😵‍💫', '🫠', '🤷‍♂️', '😬', '🙈'];
@@ -143,7 +144,11 @@ export default function ImageAnalyzer() {
   }, [uris, hasAnalyzed, error, handleAnalyze]);
 
   if (analyzing) {
-    return <LoadingScreen message="Analyzing your food..." />;
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ImageAnalyzerSkeleton />
+      </View>
+    );
   }
 
   return (

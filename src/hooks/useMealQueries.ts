@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMealsToday,
+  getMealById,
   saveMeal,
   deleteMeal,
   deleteAllMeals,
@@ -13,6 +14,14 @@ export function useMealsToday() {
   return useQuery({
     queryKey: MEALS_TODAY_KEY,
     queryFn: getMealsToday,
+  });
+}
+
+export function useMealById(id: string) {
+  return useQuery({
+    queryKey: ['meal', id],
+    queryFn: () => getMealById(id),
+    enabled: !!id,
   });
 }
 

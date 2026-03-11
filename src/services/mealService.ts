@@ -119,6 +119,14 @@ export type DailyTotals = {
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
+  sugar: number;
+  saturatedFat: number;
+  cholesterol: number;
+  sodium: number;
+  micros: Micro[];
+  animalProtein: number;
+  plantProtein: number;
 };
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
@@ -328,47 +336,154 @@ export async function getMealsToday(): Promise<{
   const headers = await getAuthHeader();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const res = await apiFetch(
-    `${BASE_URL}/v1/meals/today?timezone=${encodeURIComponent(timezone)}`,
-    { headers },
-  );
+  // Fetch meals and daily totals concurrently
+  const [mealsRes, historyRes] = await Promise.all([
+    apiFetch(`${BASE_URL}/v1/meals/today?timezone=${encodeURIComponent(timezone)}`, { headers }),
+    apiFetch(`${BASE_URL}/v1/meals/nutrition-history?timezone=${encodeURIComponent(timezone)}`, { headers }),
+  ]);
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message ?? `Fetch meals failed: ${res.status}`);
+  if (!mealsRes.ok) {
+    const err = await mealsRes.json().catch(() => ({}));
+    throw new Error(err.message ?? `Fetch meals failed: ${mealsRes.status}`);
+  }
+  if (!historyRes.ok) {
+    const err = await historyRes.json().catch(() => ({}));
+    throw new Error(err.message ?? `Fetch nutrition history failed: ${historyRes.status}`);
   }
 
-  const rawMeals: any[] = await res.json();
+  const rawMeals: any[] = await mealsRes.json();
+  const rawHistory: any[] = await historyRes.json();
   
+  // Calculate animal vs plant protein from rawMeals
+  let animalProtein = 0;
+  let plantProtein = 0;
+
   // Map snake_case from API to camelCase for frontend
   const meals: SavedMeal[] = rawMeals.map(m => ({
     id: m.id,
     meal_name: m.meal_name,
     healthScore: m.health_score,
     createdAt: m.created_at,
-    foodItems: m.food_items.map((fi: any) => ({
-      itemName: fi.item_name,
-      amountGrams: fi.amount_g,
-      healthScore: fi.health_score || 0,
-      badIngredients: fi.bad_ingredients || [],
-      goodIngredients: fi.good_ingredients || [],
-      macros: fi.macros,
-      micros: fi.micros
-    }))
+    foodItems: m.food_items.map((fi: any) => {
+      const proteinAmount = fi.macros?.protein_g ?? fi.macros?.protein ?? 0;
+      if (fi.protein_type === 'animal') {
+        animalProtein += proteinAmount;
+      } else if (fi.protein_type === 'plant') {
+        plantProtein += proteinAmount;
+      } else if (fi.protein_type === 'mixed') {
+        animalProtein += proteinAmount / 2;
+        plantProtein += proteinAmount / 2;
+      }
+
+      return {
+        itemName: fi.item_name,
+        amountGrams: fi.amount_g,
+        healthScore: fi.health_score || 0,
+        proteinType: fi.protein_type,
+        badIngredients: fi.bad_ingredients || [],
+        goodIngredients: fi.good_ingredients || [],
+        macros: {
+          calories: fi.macros?.calories ?? 0,
+          protein: fi.macros?.protein_g ?? fi.macros?.protein ?? 0,
+          carbs: fi.macros?.carbs_g ?? fi.macros?.carbs ?? 0,
+          fat: fi.macros?.fat_g ?? fi.macros?.fat ?? 0,
+          fiber: fi.macros?.fiber_g ?? fi.macros?.fiber ?? 0,
+          sugar: fi.macros?.sugar_g ?? fi.macros?.sugar ?? 0,
+          saturatedFat: fi.macros?.saturated_fat_g ?? fi.macros?.saturatedFat ?? 0,
+          cholesterol: fi.macros?.cholesterol_mg ?? fi.macros?.cholesterol ?? 0,
+          sodium: fi.macros?.sodium_mg ?? fi.macros?.sodium ?? 0,
+        },
+        micros: fi.micros
+      };
+    })
   }));
 
-  // Manually calculate daily totals
-  const dailyTotals: DailyTotals = meals.reduce((acc, meal) => {
-    meal.foodItems.forEach(item => {
-      acc.calories += item.macros.calories;
-      acc.protein += item.macros.protein;
-      acc.carbs += item.macros.carbs;
-      acc.fat += item.macros.fat;
-    });
-    return acc;
-  }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  // Get today's totals from the first entry of nutrition history
+  let dailyTotals: DailyTotals = { 
+    calories: 0, protein: 0, carbs: 0, fat: 0,
+    fiber: 0, sugar: 0, saturatedFat: 0, cholesterol: 0, sodium: 0,
+    micros: [], animalProtein, plantProtein
+  };
+  
+  if (rawHistory && rawHistory.length > 0) {
+    // History is DESC, today should be the first item
+    const todayData = rawHistory[0];
+    dailyTotals = {
+      calories: todayData.total_calories ?? 0,
+      protein: todayData.total_protein_g ?? 0,
+      carbs: todayData.total_carbs_g ?? 0,
+      fat: todayData.total_fat_g ?? 0,
+      fiber: todayData.total_fiber_g ?? 0,
+      sugar: todayData.total_sugar_g ?? 0,
+      saturatedFat: todayData.total_saturated_fat_g ?? 0,
+      cholesterol: todayData.total_cholesterol_mg ?? 0,
+      sodium: todayData.total_sodium_mg ?? 0,
+      micros: todayData.total_micros ?? [],
+      animalProtein,
+      plantProtein
+    };
+  }
 
   return { meals, dailyTotals };
+}
+
+// ─── Meal Detail ─────────────────────────────────────────────────────────────
+
+export type MealDetailFoodItem = {
+  id: string;
+  itemName: string;
+  amountGrams: number;
+  confidence?: number;
+  proteinType?: string;
+  badIngredients: string[];
+  goodIngredients: string[];
+  macros: Macros;
+  micros: Micro[];
+};
+
+export type MealDetail = {
+  id: string;
+  mealName: string;
+  healthScore: number;
+  healthScoreReasoning: string;
+  badIngredients: string[];
+  goodIngredients: string[];
+  localStoragePrefix?: string;
+  createdAt: string;
+  foodItems: MealDetailFoodItem[];
+};
+
+export async function getMealById(id: string): Promise<MealDetail> {
+  const headers = await getAuthHeader();
+  const res = await apiFetch(`${BASE_URL}/v1/meals/${id}`, { headers });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? `Get meal failed: ${res.status}`);
+  }
+
+  const raw = await res.json();
+  return {
+    id: raw.id,
+    mealName: raw.meal_name,
+    healthScore: raw.health_score,
+    healthScoreReasoning: raw.health_score_reasoning,
+    badIngredients: raw.bad_ingredients ?? [],
+    goodIngredients: raw.good_ingredients ?? [],
+    localStoragePrefix: raw.local_storage_prefix,
+    createdAt: raw.created_at,
+    foodItems: (raw.food_items ?? []).map((fi: any) => ({
+      id: fi.id,
+      itemName: fi.item_name,
+      amountGrams: fi.amount_g,
+      confidence: fi.confidence,
+      proteinType: fi.protein_type,
+      badIngredients: fi.bad_ingredients ?? [],
+      goodIngredients: fi.good_ingredients ?? [],
+      macros: fi.macros,
+      micros: fi.micros ?? [],
+    })),
+  };
 }
 
 export async function deleteMeal(id: string): Promise<void> {

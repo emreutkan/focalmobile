@@ -8,6 +8,7 @@ import LoadingScreen from '@/src/components/LoadingScreen';
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { Theme } from '@/src/theme';
 import { useUserStore } from '@/src/hooks/userStore';
+import { NutritionResultsSkeleton } from '@/src/components/Skeletons';
 
 
 export default function FoodReviewScreen() {
@@ -117,7 +118,11 @@ export default function FoodReviewScreen() {
   };
 
   if (calculating) {
-    return <LoadingScreen message="Calculating nutrition..." />;
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <NutritionResultsSkeleton />
+      </View>
+    );
   }
 
   return (

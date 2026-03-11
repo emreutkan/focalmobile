@@ -8,10 +8,12 @@ const { width } = Dimensions.get("window");
 
 interface ProteinCardProps {
   value?: number;
+  plantProtein?: number;
+  animalProtein?: number;
   onPress?: () => void;
 }
 
-export default function ProteinCard({ value = 0, onPress }: ProteinCardProps) {
+export default function ProteinCard({ value = 0, plantProtein = 0, animalProtein = 0, onPress }: ProteinCardProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
@@ -32,6 +34,10 @@ export default function ProteinCard({ value = 0, onPress }: ProteinCardProps) {
         <View style={styles.valueContainer}>
           <Text style={styles.value}>{Math.round(value)}</Text>
           <Text style={styles.unit}>g</Text>
+        </View>
+        <View style={styles.proteinSplit}>
+          <Text style={styles.splitText}>PLANT {Math.round(plantProtein)}g</Text>
+          <Text style={styles.splitText}>MEAT {Math.round(animalProtein)}g</Text>
         </View>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: '0%' }]} />
@@ -57,6 +63,7 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
+    marginVertical: 0,
   },
   value: {
     fontSize: theme.typography.fontSize["3xl"],
@@ -68,6 +75,16 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
     marginLeft: 2,
+  },
+  proteinSplit: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  splitText: {
+    fontSize: theme.typography.fontSize.xs - 2, // Tiny but bold
+    fontWeight: theme.typography.fontWeight.bold,
+    color: '#FFFFFF',
   },
   progressBar: {
     height: 8,
