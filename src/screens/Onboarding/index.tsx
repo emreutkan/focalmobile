@@ -7,6 +7,7 @@ import {
   Dimensions,
   FlatList,
   ViewToken,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -34,6 +35,7 @@ interface OnboardingSlide {
   backgroundColor: string;
   accentColor: string;
   brandStyle: 'boxed' | 'underline' | 'shadow';
+  type?: 'intro' | 'form';
 }
 
 const SLIDES: OnboardingSlide[] = [
@@ -44,6 +46,7 @@ const SLIDES: OnboardingSlide[] = [
     backgroundColor: '#FFE66D',
     accentColor: '#000000',
     brandStyle: 'boxed',
+    type: 'intro',
   },
   {
     id: '2',
@@ -52,6 +55,7 @@ const SLIDES: OnboardingSlide[] = [
     backgroundColor: '#4ecdc4',
     accentColor: '#000000',
     brandStyle: 'underline',
+    type: 'intro',
   },
   {
     id: '3',
@@ -60,6 +64,25 @@ const SLIDES: OnboardingSlide[] = [
     backgroundColor: '#ff6b6b',
     accentColor: '#000000',
     brandStyle: 'shadow',
+    type: 'intro',
+  },
+  {
+    id: '4',
+    tagline: '🧬 YOU',
+    description: "Tell us a bit about yourself.",
+    backgroundColor: '#FFE66D',
+    accentColor: '#000000',
+    brandStyle: 'boxed',
+    type: 'form',
+  },
+  {
+    id: '5',
+    tagline: '⚖️ BODY',
+    description: "Your stats to customize targets.",
+    backgroundColor: '#4ecdc4',
+    accentColor: '#000000',
+    brandStyle: 'underline',
+    type: 'form',
   },
 ];
 
@@ -72,6 +95,12 @@ export default function OnboardingScreen() {
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useSharedValue(0);
   const setHasSeenOnboarding = useUserStore((state) => state.setHasSeenOnboarding);
+  const setProfileData = useUserStore((state) => state.setProfileData);
+
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
+  const [age, setAge] = useState('');
+  const [sex, setSex] = useState<'male' | 'female' | 'other'>('male');
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -94,6 +123,12 @@ export default function OnboardingScreen() {
         animated: true,
       });
     } else {
+      setProfileData({
+        weight_kg: parseFloat(weight) || undefined,
+        height_cm: parseFloat(height) || undefined,
+        age: parseInt(age) || undefined,
+        biological_sex: sex,
+      });
       setHasSeenOnboarding(true);
     }
   };
@@ -104,6 +139,81 @@ export default function OnboardingScreen() {
   };
 
   const renderSlide = ({ item, index }: { item: OnboardingSlide; index: number }) => {
+    if (item.type === 'form') {
+      return (
+        <View style={styles.slide}>
+          <View style={styles.slideContent}>
+            <View style={styles.brandContainer}>
+              <View style={item.brandStyle === 'boxed' ? styles.brandBoxContainer : styles.brandUnderline}>
+                <Text style={item.brandStyle === 'boxed' ? styles.brandTextBoxed : styles.brandTextUnderline}>
+                  {item.tagline}
+                </Text>
+                {item.brandStyle === 'underline' && <View style={styles.underlineBar} />}
+              </View>
+            </View>
+
+            <Text style={styles.description}>{item.description}</Text>
+
+            <View style={styles.formContainer}>
+              {item.id === '4' ? (
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>AGE</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="25"
+                      keyboardType="numeric"
+                      value={age}
+                      onChangeText={setAge}
+                    />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>SEX</Text>
+                    <View style={styles.sexToggle}>
+                      {(['male', 'female', 'other'] as const).map((s) => (
+                        <TouchableOpacity
+                          key={s}
+                          style={[styles.sexOption, sex === s && styles.sexOptionActive]}
+                          onPress={() => setSex(s)}
+                        >
+                          <Text style={[styles.sexText, sex === s && styles.sexTextActive]}>
+                            {s.toUpperCase()}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>WEIGHT (KG)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="80"
+                      keyboardType="numeric"
+                      value={weight}
+                      onChangeText={setWeight}
+                    />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>HEIGHT (CM)</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="180"
+                      keyboardType="numeric"
+                      value={height}
+                      onChangeText={setHeight}
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <SlideItem
         item={item}
@@ -145,6 +255,7 @@ export default function OnboardingScreen() {
           scrollEventThrottle={16}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
+          keyboardShouldPersistTaps="handled"
         />
 
         {/* Bottom Section */}
@@ -351,6 +462,7 @@ const getStyles = (theme: Theme) => StyleSheet.create({
   slideContent: {
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
+    width: '100%',
   },
   brandContainer: {
     marginBottom: theme.spacing.xl,
@@ -444,6 +556,57 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 28,
     opacity: 0.8,
+  },
+
+  // Form
+  formContainer: {
+    width: '100%',
+    marginTop: theme.spacing.xl,
+    gap: theme.spacing.lg,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#000000',
+    letterSpacing: 2,
+  },
+  formInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: '#000000',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  sexToggle: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sexOption: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: '#000000',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  sexOptionActive: {
+    backgroundColor: '#000000',
+  },
+  sexText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#000000',
+  },
+  sexTextActive: {
+    color: '#FFFFFF',
   },
 
   // Bottom section

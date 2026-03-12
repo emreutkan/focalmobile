@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserStore } from '@/src/hooks/userStore';
 import { deleteAllMeals } from '@/src/services/mealService';
 import { useTheme } from '@/src/contexts/ThemeContext';
+import { useNutritionTargets, useUpdateNutritionTarget, useResetNutritionTarget } from '@/src/hooks/useUserQueries';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -21,6 +24,30 @@ export default function SettingsScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const setIsAuthenticated = useUserStore((state) => state.setIsAuthenticated);
   const isPro = useUserStore((state) => state.isPro);
+
+  const { data: targets, isLoading: isLoadingTargets } = useNutritionTargets();
+  const updateTarget = useUpdateNutritionTarget();
+  const resetTarget = useResetNutritionTarget();
+
+  const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  const handleEditTarget = (id: string, current: number) => {
+    setEditingTargetId(id);
+    setEditValue(current.toString());
+  };
+
+  const handleSaveTarget = (id: string, unit: string) => {
+    const val = parseFloat(editValue);
+    if (isNaN(val)) return;
+    updateTarget.mutate({ nutrientId: id, targetAmount: val, unit }, {
+      onSuccess: () => setEditingTargetId(null),
+    });
+  };
+
+  const handleResetTarget = (id: string) => {
+    resetTarget.mutate(id);
+  };
 
   const handleSwitchToPro = () => {
     router.push('/pro');
@@ -80,7 +107,6 @@ export default function SettingsScreen() {
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>SETTINGS</Text>
-        <View style={styles.backButton} />
       </View>
 
       <ScrollView
@@ -127,6 +153,62 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary }]}>NUTRITION TARGETS</Text>
+          
+          {isLoadingTargets ? (
+            <ActivityIndicator color={theme.colors.primary} />
+          ) : (
+            <View style={[styles.targetsList, { backgroundColor: theme.colors.surface }]}>
+              {targets?.map((target) => (
+                <View key={target.nutrient_id} style={styles.targetItem}>
+                  <View style={styles.targetInfo}>
+                    <Text style={[styles.targetName, { color: theme.colors.text }]}>
+                      {target.nutrient_id.replace(/_/g, ' ').toUpperCase()}
+                    </Text>
+                    {editingTargetId === target.nutrient_id ? (
+                      <View style={styles.editContainer}>
+                        <TextInput
+                          style={[styles.targetInput, { color: theme.colors.text, borderColor: theme.colors.primary }]}
+                          value={editValue}
+                          onChangeText={setEditValue}
+                          keyboardType="numeric"
+                          autoFocus
+                        />
+                        <TouchableOpacity onPress={() => handleSaveTarget(target.nutrient_id, target.unit)}>
+                          <Ionicons name="checkmark-circle" size={28} color={theme.colors.success} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setEditingTargetId(null)}>
+                          <Ionicons name="close-circle" size={28} color={theme.colors.error} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={styles.targetValueContainer}>
+                        <Text style={[styles.targetValue, { color: theme.colors.text }]}>
+                          {target.target_amount} {target.unit}
+                        </Text>
+                        <Text style={[styles.targetSource, { color: theme.colors.textTertiary }]}>
+                          ({target.source})
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.targetActions}>
+                    <TouchableOpacity onPress={() => handleEditTarget(target.nutrient_id, target.target_amount)}>
+                      <Ionicons name="create-outline" size={20} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                    {target.source === 'custom' && (
+                      <TouchableOpacity onPress={() => handleResetTarget(target.nutrient_id)}>
+                        <Ionicons name="refresh-outline" size={20} color={theme.colors.warning} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary }]}>APPEARANCE</Text>
@@ -424,4 +506,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-});
+  targetsList: {
+    borderRadius: 12,
+    padding: 8,
+  },
+  targetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  targetInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  targetName: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  targetValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  targetValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  targetSource: {
+    fontSize: 10,
+    fontStyle: 'italic',
+  },
+  targetActions: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  editContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  targetInput: {
+    borderWidth: 2,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    fontSize: 16,
+    fontWeight: '700',
+    minWidth: 60,
+  },
+  });

@@ -38,6 +38,8 @@ export default function NutritionResultsScreen() {
         mealName: mealName || nutrition.mealName || 'Untitled Meal',
         healthScore: nutrition.healthScore,
         reasoning: nutrition.reasoning,
+        badIngredients: nutrition.badIngredients ?? [],
+        goodIngredients: nutrition.goodIngredients ?? [],
         foodItems: nutrition.foodItems,
       },
       {
@@ -63,14 +65,14 @@ export default function NutritionResultsScreen() {
 
   const totalMacros = nutrition.foodItems.reduce(
     (acc, item) => ({
-      protein: acc.protein + item.macros.protein,
-      carbs: acc.carbs + item.macros.carbs,
-      fat: acc.fat + item.macros.fat,
-      calories: acc.calories + item.macros.calories,
-      fiber: acc.fiber + item.macros.fiber,
-      sugar: acc.sugar + item.macros.sugar,
+      calories: acc.calories + (item.macros.calories ?? 0),
+      protein: acc.protein + (item.macros.protein ?? 0),
+      carbs: acc.carbs + (item.macros.carbs ?? 0),
+      fat: acc.fat + (item.macros.fat ?? 0),
+      fiber: acc.fiber + (item.macros.fiber ?? 0),
+      sugar: acc.sugar + (item.macros.sugar ?? 0),
     }),
-    { protein: 0, carbs: 0, fat: 0, calories: 0, fiber: 0, sugar: 0 },
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 },
   );
 
   const allMicros = Array.from(

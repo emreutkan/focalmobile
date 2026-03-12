@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { Theme } from '../theme';
+import { HealthStatus } from '../services/mealService';
 
 const STATUSES = [
   { emoji: '🍕', text: 'Reheating the servers...' },
@@ -14,45 +15,68 @@ const STATUSES = [
   { emoji: '🤌', text: 'Italian chef-kissing the bugs away...' },
 ];
 
-export default function MaintenanceScreen() {
+interface Props {
+  healthStatus?: HealthStatus;
+}
+
+export default function MaintenanceScreen({ healthStatus }: Props) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const bounceAnim = useRef(new Animated.Value(0)).current;
-  const wiggleAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
   const [statusIndex, setStatusIndex] = useState(0);
+  const [countdown, setCountdown] = useState(10);
 
   useEffect(() => {
+    // Bounce animation for main emoji
     Animated.loop(
       Animated.sequence([
-        Animated.timing(bounceAnim, { toValue: -12, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(bounceAnim, { toValue: 0, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(bounceAnim, { toValue: -14, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(bounceAnim, { toValue: 0, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
+    // Pulse animation for status dots
     Animated.loop(
       Animated.sequence([
-        Animated.timing(wiggleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.timing(wiggleAnim, { toValue: -1, duration: 200, useNativeDriver: true }),
-        Animated.timing(wiggleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.timing(wiggleAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.delay(2000),
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       ])
     ).start();
 
-    const interval = setInterval(() => {
+    // Spin animation for refresh icon
+    Animated.loop(
+      Animated.timing(spinAnim, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: true })
+    ).start();
+
+    // Rotate status messages
+    const msgInterval = setInterval(() => {
       setStatusIndex(prev => (prev + 1) % STATUSES.length);
     }, 3000);
-    return () => clearInterval(interval);
+
+    // Countdown timer (resets every 10s to match polling)
+    const countdownInterval = setInterval(() => {
+      setCountdown(prev => (prev <= 1 ? 10 : prev - 1));
+    }, 1000);
+
+    return () => {
+      clearInterval(msgInterval);
+      clearInterval(countdownInterval);
+    };
   }, []);
 
-  const rotate = wiggleAnim.interpolate({ inputRange: [-1, 1], outputRange: ['-8deg', '8deg'] });
-
+  const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const current = STATUSES[statusIndex];
+
+  const apiUp = healthStatus?.api ?? false;
+  const dbUp = healthStatus?.db ?? false;
 
   return (
     <View style={styles.container}>
-      <Animated.Text style={[styles.mainEmoji, { transform: [{ translateY: bounceAnim }, { rotate }] }]}>
-        🚧
+      {/* Header */}
+      <Animated.Text style={[styles.mainEmoji, { transform: [{ translateY: bounceAnim }] }]}>
+        🔧
       </Animated.Text>
 
       <View style={styles.titleBox}>
@@ -60,15 +84,54 @@ export default function MaintenanceScreen() {
         <Text style={styles.subtitle}>for maintenance</Text>
       </View>
 
+      {/* Service Status Card */}
+      <View style={styles.statusCard}>
+        <Text style={styles.statusCardTitle}>SERVICE STATUS</Text>
+
+        <View style={styles.statusRow}>
+          <View style={styles.statusLeft}>
+            <Animated.View style={[
+              styles.statusDot,
+              { backgroundColor: apiUp ? '#4CAF50' : '#F44336', opacity: apiUp ? 1 : pulseAnim }
+            ]} />
+            <Text style={styles.statusLabel}>API Server</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: apiUp ? 'rgba(76,175,80,0.15)' : 'rgba(244,67,54,0.12)' }]}>
+            <Text style={[styles.statusBadgeText, { color: apiUp ? '#4CAF50' : '#F44336' }]}>
+              {apiUp ? 'ONLINE' : 'DOWN'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.statusRow}>
+          <View style={styles.statusLeft}>
+            <Animated.View style={[
+              styles.statusDot,
+              { backgroundColor: dbUp ? '#4CAF50' : '#F44336', opacity: dbUp ? 1 : pulseAnim }
+            ]} />
+            <Text style={styles.statusLabel}>Database</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: dbUp ? 'rgba(76,175,80,0.15)' : 'rgba(244,67,54,0.12)' }]}>
+            <Text style={[styles.statusBadgeText, { color: dbUp ? '#4CAF50' : '#F44336' }]}>
+              {dbUp ? 'ONLINE' : 'DOWN'}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Rotating message */}
       <View style={styles.messageCard}>
         <Text style={styles.messageEmoji}>{current.emoji}</Text>
         <Text style={styles.messageText}>{current.text}</Text>
       </View>
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>CHECK BACK IN A FEW HOURS</Text>
-        <Text style={styles.infoBody}>
-          We're cooking up something good.{'\n'}Your macros aren't going anywhere.
+      {/* Auto-retry indicator */}
+      <View style={styles.retryRow}>
+        <Animated.Text style={[styles.retryIcon, { transform: [{ rotate: spin }] }]}>⟳</Animated.Text>
+        <Text style={styles.retryText}>
+          Checking again in <Text style={styles.retryCountdown}>{countdown}s</Text>
         </Text>
       </View>
 
@@ -89,7 +152,7 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     gap: theme.spacing.lg,
   },
   mainEmoji: {
-    fontSize: 80,
+    fontSize: 72,
   },
   titleBox: {
     alignItems: 'center',
@@ -110,8 +173,62 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.textSecondary,
-    letterSpacing: theme.typography.letterSpacing.normal,
   },
+  // Status card
+  statusCard: {
+    width: '100%',
+    backgroundColor: theme.colors.card,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.08)',
+    borderRadius: theme.borderRadius.xl,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  statusCardTitle: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textSecondary,
+    letterSpacing: theme.typography.letterSpacing.wide,
+    marginBottom: theme.spacing.xs,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.xs,
+  },
+  statusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  statusLabel: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text,
+  },
+  statusBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 3,
+    borderRadius: theme.borderRadius.full,
+  },
+  statusBadgeText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
+    letterSpacing: theme.typography.letterSpacing.wide,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.07)',
+    marginVertical: theme.spacing.xs,
+  },
+  // Message card
   messageCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -123,10 +240,10 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     width: '100%',
-    minHeight: 68,
+    minHeight: 64,
   },
   messageEmoji: {
-    fontSize: 32,
+    fontSize: 28,
   },
   messageText: {
     flex: 1,
@@ -134,30 +251,25 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
   },
-  infoCard: {
-    backgroundColor: theme.colors.card,
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.08)',
-    borderRadius: theme.borderRadius.xl,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-    width: '100%',
+  // Retry row
+  retryRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: theme.spacing.xs,
   },
-  infoTitle: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text,
-    letterSpacing: theme.typography.letterSpacing.normal,
-    marginBottom: theme.spacing.sm,
-    textAlign: 'center',
-  },
-  infoBody: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
+  retryIcon: {
+    fontSize: 18,
     color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
+    fontWeight: theme.typography.fontWeight.bold,
+  },
+  retryText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  retryCountdown: {
+    color: theme.colors.text,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   badge: {
     backgroundColor: theme.card.fatCard,

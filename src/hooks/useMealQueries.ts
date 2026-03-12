@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMealsToday,
+  getMealById,
   saveMeal,
   deleteMeal,
   deleteAllMeals,
@@ -16,6 +17,14 @@ export function useMealsToday() {
   });
 }
 
+export function useMealById(id: string) {
+  return useQuery({
+    queryKey: ['meal', id],
+    queryFn: () => getMealById(id),
+    enabled: !!id,
+  });
+}
+
 export function useSaveMeal() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -23,6 +32,8 @@ export function useSaveMeal() {
       mealName: string;
       healthScore: number;
       reasoning: string;
+      badIngredients: string[];
+      goodIngredients: string[];
       foodItems: NutritionFoodItem[];
     }) => saveMeal(payload),
     onSuccess: () => {

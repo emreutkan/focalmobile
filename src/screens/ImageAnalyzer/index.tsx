@@ -9,8 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '@/src/components/LoadingScreen';
 import CardComponent from '@/src/components/Cards/cardComponent';
-import { analyzeImage, RateLimitError } from '@/src/services/mealService';
+import { analyzeImage, RateLimitError, AuthError } from '@/src/services/mealService';
+import { supabase } from '@/src/lib/supabase';
 import { useUserStore } from '@/src/hooks/userStore';
+import { ImageAnalyzerSkeleton } from '@/src/components/Skeletons';
 
 const { width } = Dimensions.get('window');
 const ERROR_FACES = ['😵‍💫', '🫠', '🤷‍♂️', '😬', '🙈'];
@@ -22,6 +24,7 @@ export default function ImageAnalyzer() {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const isPro = useUserStore((state) => state.isPro);
+  const setIsAuthenticated = useUserStore((state) => state.setIsAuthenticated);
 
   const SIDE_BUTTON_WIDTH = useMemo(() => Math.floor((width - theme.spacing.lg * 2 - theme.spacing.md) / 2) - 8, [theme.spacing.lg, theme.spacing.md]);
 
@@ -88,6 +91,28 @@ export default function ImageAnalyzer() {
       });
     } catch (err: any) {
       console.error('Error analyzing image:', err);
+      
+      if (err instanceof AuthError) {
+        setAnalyzing(false);
+        // Verify the session is actually gone before kicking the user out.
+        // A transient 401 (race condition, token refreshed mid-flight) should
+        // show a retry error, not force a logout.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          Alert.alert(
+            "Session Expired",
+            "Your session has ended. Please log in again to continue.",
+            [{ text: "Log In", onPress: () => {
+              setIsAuthenticated(false);
+              router.replace('/auth');
+            }}]
+          );
+        } else {
+          setError("Something went wrong! Let's give it another shot.");
+        }
+        return;
+      }
+
       if (err instanceof RateLimitError) {
         setAnalyzing(false);
         if (isPro) {
@@ -108,7 +133,7 @@ export default function ImageAnalyzer() {
     } finally {
       setAnalyzing(false);
     }
-  }, [uris, analyzing, router, isPro]);
+  }, [uris, analyzing, router, isPro, setIsAuthenticated]);
 
   // Auto-analyze when entering screen
   useEffect(() => {
@@ -119,7 +144,11 @@ export default function ImageAnalyzer() {
   }, [uris, hasAnalyzed, error, handleAnalyze]);
 
   if (analyzing) {
-    return <LoadingScreen message="Analyzing your food..." />;
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ImageAnalyzerSkeleton />
+      </View>
+    );
   }
 
   return (
