@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Modal } from "react-native";
 import * as Haptics from "expo-haptics";
-import { theme } from "@/src/theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import CardComponent from "@/src/components/Cards/cardComponent";
@@ -9,39 +10,51 @@ import CardComponent from "@/src/components/Cards/cardComponent";
 
 
 interface MediaSelectionProps {
-  setSelectedImage: (image: string) => void;
+  setSelectedImages: (images: string[]) => void;
   cameraPermission: boolean | null;
   galleryPermission: boolean | null;
   setCameraPermission: (permission: boolean) => void;
   setGalleryPermission: (permission: boolean) => void;
   setShowPermissionModal: (show: boolean) => void;
   setShowMediaSelection: (show: boolean) => void;
+  setPermissionType: (type: 'camera' | 'gallery' | 'both' | 'none') => void;
+  compact?: boolean;
 }
 
-export function MediaSelection({ setSelectedImage, cameraPermission, galleryPermission, setCameraPermission, setGalleryPermission, setShowPermissionModal, setShowMediaSelection }: MediaSelectionProps) {
- 
+export function MediaSelection({ 
+  setSelectedImages, 
+  cameraPermission, 
+  galleryPermission, 
+  setCameraPermission, 
+  setGalleryPermission, 
+  setShowPermissionModal, 
+  setShowMediaSelection, 
+  setPermissionType,
+  compact = false
+}: MediaSelectionProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
     const handleGallerySelect = useCallback(async () => {
 
       try {
         const currentPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
- 
-        if (currentPermission.accessPrivileges === 'none') {
-          setGalleryPermission(false);
-          setShowMediaSelection(false);
-          setShowPermissionModal(true);
-          return;
-        }
+
         if (!currentPermission.granted) {
           if (currentPermission.canAskAgain) {
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permission.granted) {
               setGalleryPermission(false);
+              setPermissionType('gallery');
+              setShowMediaSelection(false);
               setShowPermissionModal(true);
               return;
             }
             setGalleryPermission(true);
           } else {
             setGalleryPermission(false);
+            setPermissionType('gallery');
+            setShowMediaSelection(false);
             setShowPermissionModal(true);
             return;
           }
@@ -50,16 +63,18 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
           quality: 1,
+          allowsMultipleSelection: true,
+          selectionLimit: 5,
         });
 
-        if (!result.canceled && result.assets[0]) {
+        if (!result.canceled && result.assets.length > 0) {
           await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          setSelectedImage(result.assets[0].uri);
+          setSelectedImages(result.assets.map(asset => asset.uri));
         }
       } catch (error) {
         console.error('Error with gallery:', error);
       }
-    }, []);
+    }, [setSelectedImages, setGalleryPermission, setPermissionType, setShowMediaSelection, setShowPermissionModal]);
 
     const handleCameraSelect = useCallback(async () => {
 
@@ -71,12 +86,16 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
             const permission = await ImagePicker.requestCameraPermissionsAsync();
             if (!permission.granted) {
               setCameraPermission(false);
+              setPermissionType('camera');
+              setShowMediaSelection(false);
               setShowPermissionModal(true);
               return;
             }
             setCameraPermission(true);
           } else {
             setCameraPermission(false);
+            setPermissionType('camera');
+            setShowMediaSelection(false);
             setShowPermissionModal(true);
             return;
           }
@@ -89,12 +108,12 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
 
         if (!result.canceled && result.assets[0]) {
           await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          setSelectedImage(result.assets[0].uri);
+          setSelectedImages([result.assets[0].uri]);
         }
       } catch (error) {
         console.error('Error with camera:', error);
       }
-    }, []);
+    }, [setSelectedImages, setCameraPermission, setPermissionType, setShowMediaSelection, setShowPermissionModal]);
 
   return (
   
@@ -104,15 +123,19 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
     onRequestClose={() => setShowMediaSelection(false)}
   >
     <View style={styles.modalContainer}>
-      <View style={styles.pickerModalContent}>
-        <Text style={styles.pickerTitle}>SCAN YOUR FOOD</Text>
-        <Text style={styles.pickerSubtitle}>Choose how to capture</Text>
+      <View style={[styles.pickerModalContent, compact && styles.compactModalContent]}>
+        {!compact && (
+          <>
+            <Text style={styles.pickerTitle}>SCAN YOUR FOOD</Text>
+            <Text style={styles.pickerSubtitle}>Choose how to capture</Text>
+          </>
+        )}
 
-        <View style={styles.pickerOptions}>
+        <View style={[styles.pickerOptions, compact && styles.compactPickerOptions]}>
           <View style={styles.pickerOption}>
             <CardComponent
-              height={100}
-              width={120}
+              height={compact ? 70 : 100}
+              width={compact ? 80 : 120}
               backgroundColor={cameraPermission === false ? theme.colors.surface : '#4ecdc4'}
               onPress={handleCameraSelect}
               showShadow={true}
@@ -121,26 +144,26 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
               <View style={styles.pickerIconContent}>
                 <Ionicons
                   name={cameraPermission === false ? "camera-outline" : "camera"}
-                  size={40}
+                  size={compact ? 28 : 40}
                   color={cameraPermission === false ? theme.colors.textTertiary : theme.colors.text}
                 />
                 {cameraPermission === false && (
-                  <View style={styles.permissionBadge}>
-                    <Ionicons name="lock-closed" size={14} color="#fff" />
+                  <View style={[styles.permissionBadge, compact && styles.compactPermissionBadge]}>
+                    <Ionicons name="lock-closed" size={10} color="#fff" />
                   </View>
                 )}
               </View>
             </CardComponent>
-            <Text style={[
+            {!compact && <Text style={[
               styles.pickerOptionText,
               cameraPermission === false && styles.pickerOptionTextDisabled
-            ]}>CAMERA</Text>
+            ]}>CAMERA</Text>}
           </View>
 
           <View style={styles.pickerOption}>
             <CardComponent
-              height={100}
-              width={120}
+              height={compact ? 70 : 100}
+              width={compact ? 80 : 120}
               backgroundColor={galleryPermission === false ? theme.colors.surface : '#FFE66D'}
               onPress={handleGallerySelect}
               showShadow={true}
@@ -149,25 +172,25 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
               <View style={styles.pickerIconContent}>
                 <Ionicons
                   name={galleryPermission === false ? "images-outline" : "images"}
-                  size={40}
+                  size={compact ? 28 : 40}
                   color={galleryPermission === false ? theme.colors.textTertiary : theme.colors.text}
                 />
                 {galleryPermission === false && (
-                  <View style={styles.permissionBadge}>
-                    <Ionicons name="lock-closed" size={14} color="#fff" />
+                  <View style={[styles.permissionBadge, compact && styles.compactPermissionBadge]}>
+                    <Ionicons name="lock-closed" size={10} color="#fff" />
                   </View>
                 )}
               </View>
             </CardComponent>
-            <Text style={[
+            {!compact && <Text style={[
               styles.pickerOptionText,
               galleryPermission === false && styles.pickerOptionTextDisabled
-            ]}>GALLERY</Text>
+            ]}>GALLERY</Text>}
           </View>
         </View>
 
         <TouchableOpacity
-          style={styles.pickerCancelButton}
+          style={compact ? styles.compactCancelButton : styles.pickerCancelButton}
           onPress={() => setShowMediaSelection(false)}
         >
           <Text style={styles.pickerCancelText}>Cancel</Text>
@@ -178,7 +201,7 @@ export function MediaSelection({ setSelectedImage, cameraPermission, galleryPerm
   )
 };
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -193,13 +216,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 340,
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: theme.colors.text,
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 5,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  compactModalContent: {
+    padding: theme.spacing.lg,
+    maxWidth: 240,
   },
   pickerTitle: {
     fontSize: theme.typography.fontSize['2xl'],
@@ -217,6 +239,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
+  },
+  compactPickerOptions: {
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
   pickerOption: {
     alignItems: 'center',
@@ -236,6 +262,9 @@ const styles = StyleSheet.create({
   pickerCancelButton: {
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.xl,
+  },
+  compactCancelButton: {
+    paddingVertical: theme.spacing.sm,
   },
   pickerCancelText: {
     fontSize: theme.typography.fontSize.base,
@@ -258,4 +287,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: theme.colors.card,
   },
+  compactPermissionBadge: {
+    width: 18,
+    height: 18,
+    top: -4,
+    right: -4,
+  }
 });

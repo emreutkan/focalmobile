@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Pressable,
 } from "react-native";
-import { theme } from "../../theme";
 import * as Haptics from "expo-haptics";
 import Animated, {
   SharedValue,
@@ -13,16 +12,18 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useEffect } from "react";
-const OFFSET = 4;
+import { useTheme } from "../../contexts/ThemeContext";
+
+const SHADOW_OFFSET = 4;
 
 interface CardComponentProps {
   height?: number | SharedValue<number>;
   width?: number | SharedValue<number>;
   children: React.ReactNode;
   onPress?: () => void;
-  containerAnimatedStyle?: any; // Custom animated style for the card container
-  borderAnimatedStyle?: any; // Custom animated style for the border
-  shadowAnimatedStyle?: any; // Custom animated style for the shadow
+  containerAnimatedStyle?: any;
+  borderAnimatedStyle?: any;
+  shadowAnimatedStyle?: any;
   backgroundColor?: string;
   borderRadius?: number;
   padding?: number;
@@ -39,65 +40,69 @@ export default function CardComponent({
   containerAnimatedStyle,
   borderAnimatedStyle,
   shadowAnimatedStyle,
-  backgroundColor = theme.card.dailySummary,
-  borderRadius = theme.borderRadius.lg,
-  padding = theme.spacing.sm,
+  backgroundColor,
+  borderRadius,
+  padding,
   showBorder = true,
   showShadow = true,
   showPressAnimation = false,
 }: CardComponentProps) {
-  // Shared tap animation values (same across all cards)
+  const { theme } = useTheme();
+  
+  // Apply theme defaults
+  const finalBackgroundColor = backgroundColor ?? theme.card.dailySummary;
+  const finalBorderRadius = borderRadius ?? theme.borderRadius.lg;
+  const finalPadding = padding ?? theme.spacing.xs;
+
   const translate = useSharedValue(0);
-  const borderOpacity = useSharedValue(1);
-  // Tap animation style (shared across all cards)
+  const activeDarken = useSharedValue(0);
+
+  // Isometric movement: move on both X and Y to meet the shadow
   const tapAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
         { translateX: translate.value },
-        { translateY: translate.value },
+        { translateY: translate.value }
       ],
     };
   });
 
-  // Border opacity animation (shared across all cards)
-  const borderOpacityStyle = useAnimatedStyle(() => {
+  const darkenOverlayStyle = useAnimatedStyle(() => {
     return {
-      opacity: borderOpacity.value,
+      opacity: activeDarken.value * 0.15, // Subtle darkening on press
     };
   });
 
-  // Shared tap handlers
   const pressIn = () => {
-    translate.value = withTiming(OFFSET, { duration: 90 });
-    borderOpacity.value = withTiming(0, { duration: 60 });
-    // Haptic feedback on press
+    // Snap card to shadow position
+    translate.value = withTiming(SHADOW_OFFSET, { duration: 80 });
+    activeDarken.value = withTiming(1, { duration: 60 });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const pressOut = () => {
+    // Pop card back up
+    translate.value = withTiming(0, { duration: 120 });
+    activeDarken.value = withTiming(0, { duration: 100 });
   };
 
   useEffect(() => {
     if (showPressAnimation) {
-      translate.value = withTiming(OFFSET, { duration: 160 });
-      borderOpacity.value = withTiming(0, { duration: 100 });
-      // Haptic feedback on press
+      translate.value = withTiming(SHADOW_OFFSET, { duration: 150 });
+      activeDarken.value = withTiming(1, { duration: 100 });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       setTimeout(() => {
-        translate.value = withTiming(0, { duration: 140 });
-        borderOpacity.value = withTiming(1, { duration: 100 });
-      }, 160);
+        translate.value = withTiming(0, { duration: 120 });
+        activeDarken.value = withTiming(0, { duration: 100 });
+      }, 150);
     }
   }, [showPressAnimation]);
 
-  const pressOut = () => {
-    translate.value = withTiming(0, { duration: 140 });
-    borderOpacity.value = withTiming(1, { duration: 100 });
-  };
-
-  // Base container style with height/width
   const baseContainerStyle = useAnimatedStyle(() => {
     const baseStyle: any = {
-      backgroundColor,
-      borderRadius,
-      padding,
+      backgroundColor: finalBackgroundColor,
+      borderRadius: finalBorderRadius,
+      padding: finalPadding,
       overflow: "hidden",
     };
 
@@ -111,42 +116,51 @@ export default function CardComponent({
     return baseStyle;
   });
 
-  // Default shadow style if no custom shadowAnimatedStyle provided
   const defaultShadowStyle = useAnimatedStyle(() => {
     if (shadowAnimatedStyle) return {};
     const cardWidth = typeof width === "number" ? width : width?.value || 0;
     const cardHeight = typeof height === "number" ? height : height?.value || 0;
     return {
-      opacity: 1,
       width: cardWidth,
       height: cardHeight,
-      left: OFFSET,
-      top: OFFSET,
+      left: SHADOW_OFFSET,
+      top: SHADOW_OFFSET,
     };
   });
 
   return (
     <View style={styles.outerContainer}>
       {showShadow && (
-        <Animated.View 
+        <Animated.View
           style={[
-            styles.shadow, 
-            { borderRadius },
+            styles.shadow,
+            { 
+              borderRadius: finalBorderRadius, 
+              // Use a darker semantic color for that "cool" pop
+              backgroundColor: theme.colors.text, 
+              opacity: theme.dark ? 0.5 : 1 // Slight transparency in dark mode for OLED
+            },
             shadowAnimatedStyle || defaultShadowStyle
-          ]} 
+          ]}
         />
       )}
 
       <Pressable onPressIn={pressIn} onPressOut={pressOut} onPress={onPress}>
         <Animated.View style={[styles.card, baseContainerStyle, containerAnimatedStyle, tapAnimatedStyle]}>
+          <Animated.View style={[styles.activeOverlay, darkenOverlayStyle]} pointerEvents="none" />
+          
           {showBorder && (
             <Animated.View
               style={[
                 styles.border,
-                { borderRadius, borderColor: "black", borderWidth: 4 },
+                { 
+                  borderRadius: finalBorderRadius, 
+                  borderColor: theme.colors.text, 
+                  borderWidth: 2 
+                },
                 borderAnimatedStyle,
-                borderOpacityStyle,
               ]}
+              pointerEvents="none"
             />
           )}
           {children}
@@ -163,15 +177,16 @@ const styles = StyleSheet.create({
   card: {
     justifyContent: "center",
   },
+  activeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    zIndex: 10,
+  },
   border: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 11,
   },
   shadow: {
     position: "absolute",
-    backgroundColor: "black",
   },
 });

@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ReviewItems, { FoodItem } from '@/src/components/ReviewItems';
-import { calculateNutrition } from '@/src/services/groqService';
+import { analyzeItems, RateLimitError, AuthError } from '@/src/services/mealService';
 import LoadingScreen from '@/src/components/LoadingScreen';
-import { theme } from '@/src/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { Theme } from '@/src/theme';
+import { useUserStore } from '@/src/hooks/userStore';
+import { NutritionResultsSkeleton } from '@/src/components/Skeletons';
+
 
 export default function FoodReviewScreen() {
   const { items: itemsParam, mealName: mealNameParam } = useLocalSearchParams<{
@@ -14,6 +18,10 @@ export default function FoodReviewScreen() {
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const isPro = useUserStore((state) => state.isPro);
+  const setIsAuthenticated = useUserStore((state) => state.setIsAuthenticated);
 
   const [items, setItems] = useState<FoodItem[]>(() => {
     try {
@@ -30,6 +38,7 @@ export default function FoodReviewScreen() {
     }
   });
   const [calculating, setCalculating] = useState(false);
+  const [userNotes, setUserNotes] = useState('');
 
   const handleUpdateItem = (
     index: number,
@@ -61,7 +70,7 @@ export default function FoodReviewScreen() {
       );
 
       setCalculating(true);
-      const nutritionResult = await calculateNutrition(items);
+      const nutritionResult = await analyzeItems(mealName, items, userNotes || undefined);
 
       console.log('Nutrition calculation completed, navigating to results...');
 
@@ -69,18 +78,51 @@ export default function FoodReviewScreen() {
         pathname: '/nutritionResults',
         params: {
           nutritionData: encodeURIComponent(JSON.stringify(nutritionResult)),
-          foodItems: encodeURIComponent(JSON.stringify(items)),
           mealName: encodeURIComponent(mealName),
         },
       });
+      setCalculating(false);
     } catch (error: any) {
       console.error('Error calculating nutrition:', error);
       setCalculating(false);
+
+      if (error instanceof AuthError) {
+        Alert.alert(
+          "Session Expired", 
+          "Your session has ended. Please log in again to continue.",
+          [{ text: "Log In", onPress: () => {
+            setIsAuthenticated(false);
+            router.replace('/auth');
+          }}]
+        );
+        return;
+      }
+
+      if (error instanceof RateLimitError) {
+        if (isPro) {
+          Alert.alert("Limit Reached", "You've used all 30 AI calls for today. Come back tomorrow!", [{ text: "OK" }]);
+        } else {
+          Alert.alert(
+            "Daily Limit Reached", 
+            "Free users get 3 AI calls per day. Upgrade to Pro for 30 calls!",
+            [
+              { text: "Maybe Later", style: "cancel" },
+              { text: "View Pro", onPress: () => router.push('/pro') }
+            ]
+          );
+        }
+        return;
+      }
+      Alert.alert('Error', 'Failed to calculate nutrition. Please try again.');
     }
   };
 
   if (calculating) {
-    return <LoadingScreen message="Calculating nutrition..." />;
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <NutritionResultsSkeleton />
+      </View>
+    );
   }
 
   return (
@@ -91,12 +133,14 @@ export default function FoodReviewScreen() {
         onAddItem={handleAddItem}
         onRemoveItem={handleRemoveItem}
         onConfirm={handleConfirm}
+        userNotes={userNotes}
+        onUserNotesChange={setUserNotes}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

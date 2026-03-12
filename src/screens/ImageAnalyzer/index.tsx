@@ -1,24 +1,32 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { theme } from '@/src/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { Theme } from '@/src/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingScreen from '@/src/components/LoadingScreen';
 import CardComponent from '@/src/components/Cards/cardComponent';
-import { analyzeImage } from '@/src/services/groqService';
+import { analyzeImage, RateLimitError, AuthError } from '@/src/services/mealService';
+import { supabase } from '@/src/lib/supabase';
+import { useUserStore } from '@/src/hooks/userStore';
+import { ImageAnalyzerSkeleton } from '@/src/components/Skeletons';
 
 const { width } = Dimensions.get('window');
-const SIDE_BUTTON_WIDTH = Math.floor((width - theme.spacing.lg * 2 - theme.spacing.md) / 2) - 8;
-
 const ERROR_FACES = ['😵‍💫', '🫠', '🤷‍♂️', '😬', '🙈'];
 
 export default function ImageAnalyzer() {
-  const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
+  const { imageUri, imageUris } = useLocalSearchParams<{ imageUri?: string; imageUris?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const isPro = useUserStore((state) => state.isPro);
+  const setIsAuthenticated = useUserStore((state) => state.setIsAuthenticated);
+
+  const SIDE_BUTTON_WIDTH = useMemo(() => Math.floor((width - theme.spacing.lg * 2 - theme.spacing.md) / 2) - 8, [theme.spacing.lg, theme.spacing.md]);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string>('');
@@ -27,17 +35,31 @@ export default function ImageAnalyzer() {
     () => ERROR_FACES[Math.floor(Math.random() * ERROR_FACES.length)],
   );
 
+  const uris = useMemo(() => {
+    if (imageUris) {
+      try {
+        return JSON.parse(imageUris) as string[];
+      } catch (e) {
+        console.error('Error parsing imageUris:', e);
+        return imageUri ? [imageUri] : [];
+      }
+    }
+    return imageUri ? [imageUri] : [];
+  }, [imageUri, imageUris]);
+
   const handleNewPhoto = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 1,
+        allowsMultipleSelection: true,
+        selectionLimit: 5,
       });
 
-      if (!result.canceled && result.assets[0]) {
+      if (!result.canceled && result.assets.length > 0) {
         router.replace({
           pathname: '/imageAnalyzer',
-          params: { imageUri: result.assets[0].uri },
+          params: { imageUris: JSON.stringify(result.assets.map(a => a.uri)) },
         });
       }
     } catch (err) {
@@ -46,13 +68,13 @@ export default function ImageAnalyzer() {
   }, [router]);
 
   const handleAnalyze = useCallback(async () => {
-    if (!imageUri || analyzing) return;
+    if (uris.length === 0 || analyzing) return;
 
     setAnalyzing(true);
     setError('');
 
     try {
-      const result = await analyzeImage(imageUri);
+      const result = await analyzeImage(uris);
 
       if (!result.isFood) {
         setError(result.message || "That doesn't look like food!");
@@ -69,22 +91,64 @@ export default function ImageAnalyzer() {
       });
     } catch (err: any) {
       console.error('Error analyzing image:', err);
+      
+      if (err instanceof AuthError) {
+        setAnalyzing(false);
+        // Verify the session is actually gone before kicking the user out.
+        // A transient 401 (race condition, token refreshed mid-flight) should
+        // show a retry error, not force a logout.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          Alert.alert(
+            "Session Expired",
+            "Your session has ended. Please log in again to continue.",
+            [{ text: "Log In", onPress: () => {
+              setIsAuthenticated(false);
+              router.replace('/auth');
+            }}]
+          );
+        } else {
+          setError("Something went wrong! Let's give it another shot.");
+        }
+        return;
+      }
+
+      if (err instanceof RateLimitError) {
+        setAnalyzing(false);
+        if (isPro) {
+          Alert.alert("Limit Reached", "You've used all 30 scans for today. Come back tomorrow!", [{ text: "OK", onPress: () => router.back() }]);
+        } else {
+          Alert.alert(
+            "Daily Limit Reached", 
+            "Free users get 3 scans per day. Upgrade to Pro for 30 scans!",
+            [
+              { text: "Maybe Later", style: "cancel", onPress: () => router.back() },
+              { text: "View Pro", onPress: () => router.push('/pro') }
+            ]
+          );
+        }
+        return;
+      }
       setError("Something went wrong! Let's give it another shot.");
     } finally {
       setAnalyzing(false);
     }
-  }, [imageUri, analyzing, router]);
+  }, [uris, analyzing, router, isPro, setIsAuthenticated]);
 
   // Auto-analyze when entering screen
   useEffect(() => {
-    if (imageUri && !hasAnalyzed && !error) {
+    if (uris.length > 0 && !hasAnalyzed && !error) {
       setHasAnalyzed(true);
       handleAnalyze();
     }
-  }, [imageUri, hasAnalyzed, error, handleAnalyze]);
+  }, [uris, hasAnalyzed, error, handleAnalyze]);
 
   if (analyzing) {
-    return <LoadingScreen message="Analyzing your food..." />;
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ImageAnalyzerSkeleton />
+      </View>
+    );
   }
 
   return (
@@ -102,13 +166,24 @@ export default function ImageAnalyzer() {
           <Text style={styles.title}>ANALYZING</Text>
         </View>
 
-        {imageUri && (
+        {uris.length > 0 && (
           <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.image}
-              contentFit="cover"
-            />
+            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+              {uris.map((uri, index) => (
+                <View key={index} style={{ width: width - theme.spacing.lg * 2 }}>
+                  <Image
+                    source={{ uri }}
+                    style={styles.image}
+                    contentFit="cover"
+                  />
+                  {uris.length > 1 && (
+                    <View style={styles.imageCountBadge}>
+                      <Text style={styles.imageCountText}>{index + 1} / {uris.length}</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
           </View>
         )}
 
@@ -173,7 +248,7 @@ export default function ImageAnalyzer() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -220,6 +295,20 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 320,
+  },
+  imageCountBadge: {
+    position: 'absolute',
+    bottom: theme.spacing.md,
+    right: theme.spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+  },
+  imageCountText: {
+    color: '#fff',
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   // Error state
   errorCard: {

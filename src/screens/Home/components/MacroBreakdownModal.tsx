@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { theme } from "../theme";
+import { useTheme } from "@/src/contexts/ThemeContext";
+import { Theme } from "@/src/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -49,6 +50,8 @@ export default function MacroBreakdownModal({
   circleColor,
   progressColor,
 }: MacroBreakdownModalProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const blurIntensity = useSharedValue(50);
 
@@ -76,7 +79,7 @@ export default function MacroBreakdownModal({
   const overlayStyle = useAnimatedStyle(() => {
     return {
       // Reanimated handles string interpolation on the UI thread automatically
-      backgroundColor: `rgba(0, 0, 0, ${blurIntensity.value})`, 
+      backgroundColor: `rgba(0, 0, 0, ${blurIntensity.value})`,
     };
   });
 
@@ -86,7 +89,10 @@ export default function MacroBreakdownModal({
     };
   });
 
-  const maxValue = Math.max(...items.map((item) => item.value), 1);
+  const maxValue = useMemo(() => {
+    if (!items || items.length === 0) return 1;
+    return Math.max(...items.map((item) => item.value), 1);
+  }, [items]);
 
   return (
     <Modal
@@ -99,10 +105,10 @@ export default function MacroBreakdownModal({
         activeOpacity={1}
         onPress={onClose}
       >
-<Animated.View 
-        style={[styles.blurOverlay, overlayStyle]} 
+<Animated.View
+        style={[styles.blurOverlay, overlayStyle]}
       />
-         
+
         <Animated.View style={[styles.modalContainer, modalStyle]}>
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
             {/* Header */}
@@ -124,30 +130,37 @@ export default function MacroBreakdownModal({
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={true}
               >
-                {items.map((item, index) => {
-                  const progress = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
-                  return (
-                    <View key={index} style={styles.itemCard}>
-                      <View style={[styles.circle, { backgroundColor: circleColor }]}>
-                        <Text style={styles.circleText}>{Math.round(item.value)}</Text>
-                      </View>
-                      <View style={styles.itemInfo}>
-                        <Text style={styles.itemName}>{item.name}</Text>
-                        <Text style={styles.itemTime}>{item.time}</Text>
-                      </View>
-                      <View style={styles.progressBarContainer}>
-                        <View style={styles.progressBarTrack}>
-                          <View
-                            style={[
-                              styles.progressBarFill,
-                              { width: `${progress}%`, backgroundColor: progressColor },
-                            ]}
-                          />
+                {(!items || items.length === 0) ? (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="receipt-outline" size={48} color={theme.colors.textTertiary} />
+                    <Text style={styles.emptyText}>No food entries contributed to this today.</Text>
+                  </View>
+                ) : (
+                  items.map((item, index) => {
+                    const progress = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+                    return (
+                      <View key={index} style={styles.itemCard}>
+                        <View style={[styles.circle, { backgroundColor: circleColor }]}>
+                          <Text style={styles.circleText}>{Math.round(item.value)}</Text>
+                        </View>
+                        <View style={styles.itemInfo}>
+                          <Text style={styles.itemName}>{item.name}</Text>
+                          <Text style={styles.itemTime}>{item.time}</Text>
+                        </View>
+                        <View style={styles.progressBarContainer}>
+                          <View style={styles.progressBarTrack}>
+                            <View
+                              style={[
+                                styles.progressBarFill,
+                                { width: `${progress}%`, backgroundColor: progressColor },
+                              ]}
+                            />
+                          </View>
                         </View>
                       </View>
-                    </View>
-                  );
-                })}
+                    );
+                  })
+                )}
               </ScrollView>
             </View>
           </TouchableOpacity>
@@ -157,7 +170,7 @@ export default function MacroBreakdownModal({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
@@ -212,6 +225,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
+    minHeight: 200,
   },
   scrollView: {
     flex: 1,
@@ -268,5 +282,17 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: "100%",
     borderRadius: 4,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });

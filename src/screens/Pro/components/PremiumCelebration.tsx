@@ -1,18 +1,17 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSpring,
-  withDelay,
-  withSequence,
   Easing,
   runOnJS,
   interpolate,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '@/src/theme';
+import { useTheme } from '@/src/contexts/ThemeContext';
+import { Theme } from '@/src/theme';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -22,6 +21,8 @@ interface PremiumCelebrationProps {
 }
 
 export default function PremiumCelebration({ onComplete }: PremiumCelebrationProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const [currentPhase, setCurrentPhase] = useState(0);
 
   // Animation values - smooth and intentional
@@ -52,7 +53,7 @@ export default function PremiumCelebration({ onComplete }: PremiumCelebrationPro
     containerOpacity.value = withTiming(1, { duration: 400 });
 
     // Phase 1: Badge appears (400-800ms)
-    setTimeout(() => {
+    const t1 = setTimeout(() => {
       hapticTap();
       setCurrentPhase(1);
       badgeOpacity.value = withTiming(1, { duration: 300 });
@@ -60,7 +61,7 @@ export default function PremiumCelebration({ onComplete }: PremiumCelebrationPro
     }, 400);
 
     // Phase 2: Checkmark draws (800-1200ms)
-    setTimeout(() => {
+    const t2 = setTimeout(() => {
       hapticSuccess();
       setCurrentPhase(2);
       checkmarkProgress.value = withTiming(1, {
@@ -70,20 +71,20 @@ export default function PremiumCelebration({ onComplete }: PremiumCelebrationPro
     }, 800);
 
     // Phase 3: Text appears (1200-1600ms)
-    setTimeout(() => {
+    const t3 = setTimeout(() => {
       hapticSoft();
       setCurrentPhase(3);
       textOpacity.value = withTiming(1, { duration: 400 });
     }, 1200);
 
     // Phase 4: Features list (1600-2400ms)
-    setTimeout(() => {
+    const t4 = setTimeout(() => {
       setCurrentPhase(4);
       featuresOpacity.value = withTiming(1, { duration: 400 });
     }, 1600);
 
     // Phase 5: Progress bar fills (2400-3200ms)
-    setTimeout(() => {
+    const t5 = setTimeout(() => {
       hapticSoft();
       progressWidth.value = withTiming(1, {
         duration: 800,
@@ -92,19 +93,23 @@ export default function PremiumCelebration({ onComplete }: PremiumCelebrationPro
     }, 2400);
 
     // Haptic rhythm during progress
-    setTimeout(() => hapticTap(), 2600);
-    setTimeout(() => hapticTap(), 2800);
-    setTimeout(() => hapticTap(), 3000);
-    setTimeout(() => hapticSuccess(), 3200);
+    const t6 = setTimeout(() => hapticTap(), 2600);
+    const t7 = setTimeout(() => hapticTap(), 2800);
+    const t8 = setTimeout(() => hapticTap(), 3000);
+    const t9 = setTimeout(() => hapticSuccess(), 3200);
 
     // Phase 6: Exit (4000-4500ms)
-    setTimeout(() => {
+    const t10 = setTimeout(() => {
       exitOpacity.value = withTiming(0, { duration: 500 }, (finished) => {
         if (finished) {
           runOnJS(onComplete)();
         }
       });
     }, 4000);
+
+    return () => {
+      [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10].forEach(clearTimeout);
+    };
   }, []);
 
   // Animated styles
@@ -204,7 +209,7 @@ export default function PremiumCelebration({ onComplete }: PremiumCelebrationPro
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: Theme) => StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: theme.colors.background,
