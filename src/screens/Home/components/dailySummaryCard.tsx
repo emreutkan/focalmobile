@@ -8,10 +8,12 @@ const { width } = Dimensions.get("window");
 
 interface Props {
   calories?: number;
+  target?: number;
+  pct?: number;
   onPress?: () => void;
 }
 
-export default function DailySummaryCard({ calories = 0, onPress }: Props) {
+export default function DailySummaryCard({ calories = 0, target, pct = 0, onPress }: Props) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const CARD_WIDTH = width - theme.spacing.md * 2;
@@ -30,8 +32,11 @@ export default function DailySummaryCard({ calories = 0, onPress }: Props) {
           <Text style={styles.value}>{Math.round(calories)}</Text>
           <Text style={styles.unit}>kcal</Text>
         </View>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '0%' }]} />
+        <View style={styles.footer}>
+          <Text style={styles.targetText}>{target ? `Target: ${Math.round(target)}` : 'No Target'}</Text>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${Math.min(pct, 100)}%` }]} />
+          </View>
         </View>
       </View>
     </CardComponent>
@@ -66,15 +71,24 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     color: theme.colors.text,
     marginLeft: 4,
   },
+  footer: {
+    gap: 8,
+  },
+  targetText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.text,
+    opacity: 0.6,
+  },
   progressBar: {
-    height: 8,
+    height: 12,
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    borderRadius: 4,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: theme.colors.text,
-    borderRadius: 4,
+    borderRadius: 6,
   },
 });

@@ -27,6 +27,8 @@ import Animated, {
 import { useTheme } from '@/src/contexts/ThemeContext';
 import { Theme } from '@/src/theme';
 import { signUp, signInWithEmail, signInWithGoogle } from '@/src/lib/auth';
+import { useUserStore } from '@/src/hooks/userStore';
+import { userService } from '@/src/services/userService';
 
 type AuthMode = 'login' | 'register';
 
@@ -185,14 +187,19 @@ function BoldButton({
 interface AuthScreenProps {
   onAuthSuccess?: () => void;
 }
-
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const { top, bottom } = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [mode, setMode] = useState<AuthMode>('login');
+
+  const profileData = useUserStore((state) => state.profileData);
+  const setProfileData = useUserStore((state) => state.setProfileData);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // ... rest of state
+
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -272,6 +279,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     try {
       if (isLogin) {
         await signInWithEmail(email.trim(), password);
+        
+        // Send profile data if it was collected during onboarding
+        if (profileData) {
+          try {
+            await userService.updateProfile(profileData);
+            setProfileData(null); // Clear after successful sync
+          } catch (profileErr) {
+            console.error('Failed to sync profile data:', profileErr);
+          }
+        }
+
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         onAuthSuccess?.();
       } else {
@@ -298,6 +316,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
     try {
       await signInWithGoogle();
+      
+      // Send profile data if it was collected during onboarding
+      if (profileData) {
+        try {
+          await userService.updateProfile(profileData);
+          setProfileData(null); // Clear after successful sync
+        } catch (profileErr) {
+          console.error('Failed to sync profile data:', profileErr);
+        }
+      }
+
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onAuthSuccess?.();
     } catch (err: any) {

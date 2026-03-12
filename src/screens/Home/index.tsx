@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import { MediaPermission } from "./components/mediaPermission";
 import { ShowImage } from "./components/showImage";
 import { useMealsToday, useDeleteMeal } from "@/src/hooks/useMealQueries";
+import { useNutritionGaps } from "@/src/hooks/useUserQueries";
 import { HomeSkeleton } from "@/src/components/Skeletons";
 
 export default function HomeScreen() {
@@ -31,8 +32,12 @@ export default function HomeScreen() {
       scrollY.value = event.contentOffset.y;
     },
   });
-    const { data: mealsData, refetch, isRefetching, isLoading } = useMealsToday();
+    const { data: mealsData, refetch: refetchMeals, isRefetching: isRefetchingMeals, isLoading: isLoadingMeals } = useMealsToday();
+    const { data: gapsData, refetch: refetchGaps, isRefetching: isRefetchingGaps, isLoading: isLoadingGaps } = useNutritionGaps();
     const deleteMealMutation = useDeleteMeal();
+
+    const isLoading = isLoadingMeals || isLoadingGaps;
+    const isRefetching = isRefetchingMeals || isRefetchingGaps;
 
     const meals = (mealsData?.meals ?? []).map(m => ({
       id: m.id,
@@ -91,8 +96,8 @@ export default function HomeScreen() {
 
     const onRefresh = useCallback(async () => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        await refetch();
-    }, [refetch]);
+        await Promise.all([refetchMeals(), refetchGaps()]);
+    }, [refetchMeals, refetchGaps]);
 
     const handleCardPress = useCallback(async (type: string) => {
       try {
@@ -108,23 +113,31 @@ export default function HomeScreen() {
       if (!mealsData?.meals) return [];
       const items: { name: string; value: number; time: string }[] = [];
       
-      // Use the raw mealsData from the query since it has the full macros/micros payload
+      console.log('Calculating breakdown for:', modalType);
+
       mealsData.meals.forEach(meal => {
         const date = new Date(meal.createdAt);
         const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
         meal.foodItems.forEach(food => {
           let value = 0;
-          if (modalType === 'calories') value = food.macros?.calories ?? 0;
-          else if (modalType === 'protein') value = food.macros?.protein ?? 0;
-          else if (modalType === 'carbs') value = food.macros?.carbs ?? 0;
-          else if (modalType === 'fat') value = food.macros?.fat ?? 0;
-          else if (modalType === 'fiber') value = food.macros?.fiber ?? 0;
-          else if (modalType === 'sugar') value = food.macros?.sugar ?? 0;
-          else if (modalType === 'saturatedFat') value = food.macros?.saturatedFat ?? 0;
-          else if (modalType === 'cholesterol') value = food.macros?.cholesterol ?? 0;
-          else if (modalType === 'sodium') value = food.macros?.sodium ?? 0;
+          const normalizedType = modalType.toLowerCase().replace(/_/g, '');
+          
+          if (normalizedType === 'calories') value = food.macros?.calories ?? 0;
+          else if (normalizedType === 'protein') value = food.macros?.protein ?? 0;
+          else if (normalizedType === 'carbs') value = food.macros?.carbs ?? 0;
+          else if (normalizedType === 'fat') value = food.macros?.fat ?? 0;
+          else if (normalizedType === 'fiber') value = food.macros?.fiber ?? 0;
+          else if (normalizedType === 'sugar') value = food.macros?.sugar ?? 0;
+          else if (normalizedType === 'saturatedfat') value = food.macros?.saturatedFat ?? 0;
+          else if (normalizedType === 'cholesterol') value = food.macros?.cholesterol ?? 0;
+          else if (normalizedType === 'sodium') value = food.macros?.sodium ?? 0;
           else {
-            const micro = food.micros?.find((m: any) => m.name === modalType);
+            // Check both micro.name and micro.nutrient_id
+            const micro = food.micros?.find((m: any) => 
+              m.name?.toLowerCase().replace(/_/g, '') === normalizedType ||
+              m.nutrient_id?.toLowerCase().replace(/_/g, '') === normalizedType
+            );
             if (micro) value = micro.amount;
           }
 
@@ -133,7 +146,8 @@ export default function HomeScreen() {
           }
         });
       });
-      return items.sort((a, b) => b.value - a.value); // sort by highest contributor first
+      console.log('Found items:', items.length);
+      return items.sort((a, b) => b.value - a.value);
     }, [mealsData, modalType]);
 
     const modalProps = useMemo(() => {
@@ -141,6 +155,10 @@ export default function HomeScreen() {
       let total = 0;
       let unit = 'g';
       let color = theme.card.dailySummary;
+
+      const gap = gapsData?.find(g => 
+        g.nutrient_id.toLowerCase().replace(/_/g, '') === modalType.toLowerCase().replace(/_/g, '')
+      );
 
       if (modalType === 'calories') { total = dailyTotals.calories; unit = 'kcal'; color = theme.card.dailySummary; }
       else if (modalType === 'protein') { total = dailyTotals.protein; color = theme.card.proteinCard; }
@@ -160,8 +178,14 @@ export default function HomeScreen() {
           color = theme.colors.primary;
         }
       }
+
+      if (gap) {
+        total = gap.intake;
+        unit = gap.unit;
+      }
+
       return { title, total, unit, color };
-    }, [modalType, dailyTotals, theme]);
+    }, [modalType, dailyTotals, gapsData, theme]);
 
     const handleDeleteMeal = useCallback(async (mealId: string) => {
       Alert.alert(
@@ -266,6 +290,7 @@ export default function HomeScreen() {
                     <>
                       <MiddleSection
                         dailyTotals={dailyTotals}
+                        gaps={gapsData ?? []}
                         onCaloriesPress={() => handleCardPress('calories')}
                         onProteinPress={() => handleCardPress('protein')}
                         onCarbsPress={() => handleCardPress('carbs')}

@@ -176,13 +176,21 @@ async function getUserId(): Promise<string> {
 
 // ─── API calls ────────────────────────────────────────────────────────────────
 
-export async function checkHealth(): Promise<boolean> {
+export interface HealthStatus {
+  api: boolean;
+  db: boolean;
+}
+
+export async function checkHealth(): Promise<HealthStatus> {
   try {
     const res = await apiFetch(`${BASE_URL}/v1/health`);
     const data = await res.json();
-    return data?.status === 'UP';
+    return {
+      api: data?.status === 'UP',
+      db: data?.db === 'UP',
+    };
   } catch {
-    return false;
+    return { api: false, db: false };
   }
 }
 

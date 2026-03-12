@@ -7,10 +7,12 @@ import FatCard from "./fatCard";
 import { useTheme } from "@/src/contexts/ThemeContext";
 import { Theme } from "@/src/theme";
 import type { DailyTotals } from "@/src/services/mealService";
+import type { NutritionGap } from "@/src/services/userService";
 import CardComponent from "@/src/components/Cards/cardComponent";
 
 interface MiddleSectionProps {
   dailyTotals: DailyTotals;
+  gaps: NutritionGap[];
   onCaloriesPress?: () => void;
   onProteinPress?: () => void;
   onCarbsPress?: () => void;
@@ -20,6 +22,7 @@ interface MiddleSectionProps {
 
 export default function MiddleSection({ 
   dailyTotals,
+  gaps,
   onCaloriesPress,
   onProteinPress,
   onCarbsPress,
@@ -29,24 +32,20 @@ export default function MiddleSection({
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
-  // Aggregate micros by name (combining amounts with the same name)
-  const microsSummary = useMemo(() => {
-    const map = new Map<string, { amount: number, unit: string }>();
-    dailyTotals.micros.forEach(m => {
-      if (map.has(m.name)) {
-        map.get(m.name)!.amount += m.amount;
-      } else {
-        map.set(m.name, { amount: m.amount, unit: m.unit });
-      }
-    });
-    return Array.from(map.entries()).map(([name, data]) => ({ name, ...data }));
-  }, [dailyTotals.micros]);
+  const getGap = (id: string) => gaps.find(g => g.nutrient_id.toLowerCase().replace(/_/g, '') === id.toLowerCase().replace(/_/g, ''));
+
+  const calorieGap = getGap('calories');
+  const proteinGap = getGap('protein');
+  const carbGap = getGap('carbs');
+  const fatGap = getGap('fat');
 
   return (
     <View style={styles.container}>
       <View style={styles.dailySummaryContainer}>
         <DailySummaryCard
           calories={dailyTotals.calories}
+          target={calorieGap?.target}
+          pct={calorieGap?.pct}
           onPress={onCaloriesPress}
         />
       </View>
@@ -54,12 +53,24 @@ export default function MiddleSection({
       <View style={styles.smallCardsContainer}>
         <ProteinCard 
           value={dailyTotals.protein} 
+          target={proteinGap?.target}
+          pct={proteinGap?.pct}
           plantProtein={dailyTotals.plantProtein} 
           animalProtein={dailyTotals.animalProtein} 
           onPress={onProteinPress} 
         />
-        <CarbCard value={dailyTotals.carbs} onPress={onCarbsPress} />
-        <FatCard value={dailyTotals.fat} onPress={onFatPress} />
+        <CarbCard 
+          value={dailyTotals.carbs} 
+          target={carbGap?.target}
+          pct={carbGap?.pct}
+          onPress={onCarbsPress} 
+        />
+        <FatCard 
+          value={dailyTotals.fat} 
+          target={fatGap?.target}
+          pct={fatGap?.pct}
+          onPress={onFatPress} 
+        />
       </View>
 
       {/* Other Macros Section */}
@@ -70,70 +81,42 @@ export default function MiddleSection({
           showsHorizontalScrollIndicator={false} 
           contentContainerStyle={styles.horizontalScroll}
         >
-          <CardComponent
-            backgroundColor={theme.colors.card}
-            padding={theme.spacing.sm}
-            showPressAnimation={true}
-            onPress={() => onNutrientPress?.('fiber')}
-          >
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>FIBER</Text>
-              <Text style={styles.nutritionValue}>{Math.round(dailyTotals.fiber)}g</Text>
-            </View>
-          </CardComponent>
-
-          <CardComponent
-            backgroundColor={theme.colors.card}
-            padding={theme.spacing.sm}
-            showPressAnimation={true}
-            onPress={() => onNutrientPress?.('sugar')}
-          >
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>SUGAR</Text>
-              <Text style={styles.nutritionValue}>{Math.round(dailyTotals.sugar)}g</Text>
-            </View>
-          </CardComponent>
-
-          <CardComponent
-            backgroundColor={theme.colors.card}
-            padding={theme.spacing.sm}
-            showPressAnimation={true}
-            onPress={() => onNutrientPress?.('saturatedFat')}
-          >
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>SAT FAT</Text>
-              <Text style={styles.nutritionValue}>{Math.round(dailyTotals.saturatedFat)}g</Text>
-            </View>
-          </CardComponent>
-
-          <CardComponent
-            backgroundColor={theme.colors.card}
-            padding={theme.spacing.sm}
-            showPressAnimation={true}
-            onPress={() => onNutrientPress?.('cholesterol')}
-          >
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>CHOL</Text>
-              <Text style={styles.nutritionValue}>{Math.round(dailyTotals.cholesterol)}mg</Text>
-            </View>
-          </CardComponent>
-
-          <CardComponent
-            backgroundColor={theme.colors.card}
-            padding={theme.spacing.sm}
-            showPressAnimation={true}
-            onPress={() => onNutrientPress?.('sodium')}
-          >
-            <View style={styles.nutritionItem}>
-              <Text style={styles.nutritionLabel}>SODIUM</Text>
-              <Text style={styles.nutritionValue}>{Math.round(dailyTotals.sodium)}mg</Text>
-            </View>
-          </CardComponent>
+          {['fiber', 'sugar', 'saturatedFat', 'cholesterol', 'sodium'].map((id) => {
+            const gap = getGap(id);
+            const value = id === 'fiber' ? dailyTotals.fiber : 
+                          id === 'sugar' ? dailyTotals.sugar :
+                          id === 'saturatedFat' ? dailyTotals.saturatedFat :
+                          id === 'cholesterol' ? dailyTotals.cholesterol :
+                          id === 'sodium' ? dailyTotals.sodium : 0;
+            const unit = (id === 'cholesterol' || id === 'sodium') ? 'mg' : 'g';
+            const label = id === 'saturatedFat' ? 'SAT FAT' : 
+                          id === 'cholesterol' ? 'CHOL' : id.toUpperCase();
+            
+            return (
+              <CardComponent
+                key={id}
+                backgroundColor={theme.colors.card}
+                padding={theme.spacing.sm}
+                showPressAnimation={true}
+                onPress={() => onNutrientPress?.(id)}
+              >
+                <View style={styles.nutritionItem}>
+                  <Text style={styles.nutritionLabel}>{label}</Text>
+                  <Text style={styles.nutritionValue}>{Math.round(value)}{unit}</Text>
+                  {gap && (
+                    <View style={styles.miniProgressBar}>
+                      <View style={[styles.miniProgressFill, { width: `${Math.min(gap.pct, 100)}%`, backgroundColor: getStatusColor(gap.status, theme) }]} />
+                    </View>
+                  )}
+                </View>
+              </CardComponent>
+            );
+          })}
         </ScrollView>
       </View>
 
       {/* Micros Section */}
-      {microsSummary.length > 0 && (
+      {gaps.filter(g => !['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'saturatedfat', 'cholesterol', 'sodium'].includes(g.nutrient_id.toLowerCase().replace(/_/g, ''))).length > 0 && (
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>MICRONUTRIENTS</Text>
           <ScrollView 
@@ -141,19 +124,22 @@ export default function MiddleSection({
             showsHorizontalScrollIndicator={false} 
             contentContainerStyle={styles.horizontalScroll}
           >
-            {microsSummary.map((micro, i) => (
+            {gaps.filter(g => !['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'saturatedfat', 'cholesterol', 'sodium'].includes(g.nutrient_id.toLowerCase().replace(/_/g, ''))).map((gap, i) => (
               <CardComponent
                 key={i}
                 backgroundColor={theme.colors.card}
                 padding={theme.spacing.sm}
                 showPressAnimation={true}
-                onPress={() => onNutrientPress?.(micro.name)}
+                onPress={() => onNutrientPress?.(gap.nutrient_id)}
               >
                 <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>{micro.name.replace(/_/g, ' ')}</Text>
+                  <Text style={styles.nutritionLabel}>{gap.nutrient_id.replace(/_/g, ' ')}</Text>
                   <Text style={styles.nutritionValue}>
-                    {Number.isInteger(micro.amount) ? micro.amount : micro.amount.toFixed(1)}{micro.unit}
+                    {Number.isInteger(gap.intake) ? gap.intake : gap.intake.toFixed(1)}{gap.unit}
                   </Text>
+                  <View style={styles.miniProgressBar}>
+                    <View style={[styles.miniProgressFill, { width: `${Math.min(gap.pct, 100)}%`, backgroundColor: getStatusColor(gap.status, theme) }]} />
+                  </View>
                 </View>
               </CardComponent>
             ))}
@@ -162,6 +148,16 @@ export default function MiddleSection({
       )}
     </View>
   );
+}
+
+function getStatusColor(status: string, theme: Theme) {
+  switch (status) {
+    case 'deficient': return theme.colors.error;
+    case 'approaching': return theme.colors.warning;
+    case 'met': return theme.colors.success;
+    case 'exceeded': return '#FF9500'; // Orange
+    default: return theme.colors.primary;
+  }
 }
 
 const getStyles = (theme: Theme) => StyleSheet.create({
@@ -210,4 +206,16 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text,
   },
-});
+  miniProgressBar: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 2,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  miniProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  });
